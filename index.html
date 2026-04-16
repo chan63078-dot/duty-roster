@@ -699,10 +699,8 @@ function openSched(ds) {
 
   const isHoliday=!!S.holidays[ds];
   selectedType=sched?sched.schedule_type:(isHoliday?'volunteer':(isWknd?'weekend_single':'normal'));
-  renderTypeGrid(isWknd,isHoliday);
-  updateCompSection(isWknd);
 
-  // Pre-populate workers from existing comps
+  // Pre-populate workers BEFORE rendering UI (so UI shows existing members correctly)
   if(sched){
     const wcs=S.compsByWork[ds]||[];
     if(sched.schedule_type==='volunteer'){
@@ -714,6 +712,9 @@ function openSched(ds) {
       });
     }
   }
+
+  renderTypeGrid(isWknd,isHoliday);
+  updateCompSection(isWknd);
 
   document.getElementById('delBtn').style.display=sched?'block':'none';
   document.getElementById('schedOverlay').classList.add('open');
@@ -806,9 +807,11 @@ function renderMemberChecks(){
 
 function toggleMem(m){
   if(workedMembers.has(m)) workedMembers.delete(m); else workedMembers.add(m);
-  const teamId=parseInt(document.getElementById('teamSel').value);
-  const team=S.teams.find(t=>t.id===teamId);
-  renderMemberChecks();
+  if(selectedType==='volunteer'){
+    renderVolunteerPicks();
+  } else {
+    renderMemberChecks();
+  }
 }
 
 function renderCompPerMember(mems){
