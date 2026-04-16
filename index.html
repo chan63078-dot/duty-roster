@@ -263,6 +263,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
     </div>
 
     <div class="sec">
+      <div class="sec-hdr">달력 내보내기</div>
+      <div class="sec-body">
+        <button class="btn btn-p btn-full" onclick="copyToExcel()">📋 엑셀 양식으로 클립보드 복사</button>
+        <div style="font-size:11px;color:var(--text-sub);margin-top:8px">복사 후 엑셀에서 Ctrl+V로 붙여넣기 하세요. 클립보드가 차단된 경우 파일로 다운로드됩니다.</div>
+      </div>
+    </div>
+
+    <div class="sec">
       <div class="sec-hdr">데이터 백업/복원</div>
       <div class="sec-body">
         <div style="display:flex;gap:8px">
@@ -323,15 +331,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
       <div id="typeGrid" class="radio-g three"></div>
     </div>
 
-    <!-- Weekend compensation section -->
+    <!-- Weekend compensation / Volunteer section -->
     <div id="compSection" style="display:none">
-      <div class="warn-box">
-        <div class="warn-box-title">⚡ 주말 근무 보상 설정</div>
-        <div class="warn-box-sub">근무자를 선택하고 보상 유형을 지정하세요</div>
+      <div class="warn-box" id="compWarnBox">
+        <div class="warn-box-title" id="compWarnTitle">⚡ 주말 근무 보상 설정</div>
+        <div class="warn-box-sub" id="compWarnSub">근무자를 선택하고 보상 유형을 지정하세요</div>
       </div>
       <div class="fg">
-        <label class="fl">근무한 직원</label>
+        <label class="fl" id="memChecksLabel">근무한 직원</label>
         <div class="mem-checks" id="memChecks"></div>
+        <div class="addrow" id="volCustomRow" style="display:none;margin-top:6px">
+          <input type="text" id="volCustomInp" class="finp" placeholder="직원 이름 직접 입력">
+          <button class="btn btn-p btn-sm" onclick="addVolCustom()">추가</button>
+        </div>
       </div>
       <div id="compPerMember"></div>
     </div>
@@ -602,10 +614,15 @@ function renderCalendar() {
 
       let html=`<div class="dnum">${cur.getDate()}</div>`;
       if(isH) html+=`<div class="hname">${S.holidays[ds]}</div>`;
-      if(team&&inP){
-        html+=`<div class="cteam" style="color:${darken(team.color)}">${team.name}</div>`;
-        const mems=team.members||[];
-        if(mems.length) html+=`<div class="cmembers">${mems.join(', ')}</div>`;
+      if(inP&&sched){
+        if(sched.schedule_type==='volunteer'){
+          const vols=(S.compsByWork[ds]||[]).filter(c=>c.work_type==='volunteer');
+          if(vols.length) html+=`<div class="cmembers">${vols.map(c=>c.member_name).join(', ')}</div>`;
+        } else if(team){
+          html+=`<div class="cteam" style="color:${darken(team.color)}">${team.name}</div>`;
+          const mems=team.members||[];
+          if(mems.length) html+=`<div class="cmembers">${mems.join(', ')}</div>`;
+        }
       }
 
       // Badges
@@ -637,7 +654,7 @@ function renderCalendar() {
       }
 
       if(sched&&sched.schedule_type==='volunteer'&&inP)
-        badges.push(`<span class="badge b-vol">자원근무</span>`);
+        badges.push(`<span class="badge b-vol">자원</span>`);
 
       if(badges.length) html+=`<div class="cbadges">${badges.join('')}</div>`;
 
@@ -685,13 +702,17 @@ function openSched(ds) {
   renderTypeGrid(isWknd,isHoliday);
   updateCompSection(isWknd);
 
-  // Pre-populate worked members from existing comps
-  if(sched&&isWknd){
+  // Pre-populate workers from existing comps
+  if(sched){
     const wcs=S.compsByWork[ds]||[];
-    wcs.forEach(c=>{
-      workedMembers.add(c.member_name);
-      memberCompTypes[c.member_name]={compType:c.comp_type,compDate:c.comp_date||''};
-    });
+    if(sched.schedule_type==='volunteer'){
+      wcs.filter(c=>c.work_type==='volunteer').forEach(c=>workedMembers.add(c.member_name));
+    } else if(isWknd){
+      wcs.filter(c=>c.work_type!=='volunteer').forEach(c=>{
+        workedMembers.add(c.member_name);
+        memberCompTypes[c.member_name]={compType:c.comp_type,compDate:c.comp_date||''};
+      });
+    }
   }
 
   document.getElementById('delBtn').style.display=sched?'block':'none';
@@ -733,11 +754,43 @@ function onTeamChange(){
 
 function updateCompSection(isWknd){
   const cs=document.getElementById('compSection');
-  if(!isWknd||selectedType==='normal'||selectedType==='volunteer'){
+  if(selectedType==='volunteer'){
+    cs.style.display='block';
+    document.getElementById('compWarnTitle').textContent='👥 자원근무 인원';
+    document.getElementById('compWarnSub').textContent='참여할 직원을 선택하거나 직접 입력하세요';
+    document.getElementById('memChecksLabel').textContent='참여 인원';
+    document.getElementById('volCustomRow').style.display='flex';
+    document.getElementById('compPerMember').innerHTML='';
+    renderVolunteerPicks();
+    return;
+  }
+  document.getElementById('compWarnTitle').textContent='⚡ 주말 근무 보상 설정';
+  document.getElementById('compWarnSub').textContent='근무자를 선택하고 보상 유형을 지정하세요';
+  document.getElementById('memChecksLabel').textContent='근무한 직원';
+  document.getElementById('volCustomRow').style.display='none';
+  if(!isWknd||selectedType==='normal'){
     cs.style.display='none'; return;
   }
   cs.style.display='block';
   renderMemberChecks();
+}
+
+function renderVolunteerPicks(){
+  const allMems=[...new Set(S.teams.filter(t=>t.active).flatMap(t=>t.members||[]))];
+  const customMems=[...workedMembers].filter(m=>!allMems.includes(m));
+  const all=[...allMems,...customMems];
+  document.getElementById('memChecks').innerHTML=all.map(m=>
+    `<div class="mem-check ${workedMembers.has(m)?'on':''}" onclick="toggleMem('${m}')"><span>${m}</span></div>`
+  ).join('');
+}
+
+function addVolCustom(){
+  const inp=document.getElementById('volCustomInp');
+  const name=inp.value.trim();
+  if(!name) return;
+  workedMembers.add(name);
+  inp.value='';
+  renderVolunteerPicks();
 }
 
 function renderMemberChecks(){
@@ -834,23 +887,32 @@ async function saveSchedule(){
   else ({error:err}=await db.from('schedules').insert(payload));
   if(err){toast('저장 실패: '+err.message);return;}
 
-  // Save compensation records
-  if(selectedType==='weekend_single'||selectedType==='weekend_both'){
-    const period=curPeriod();
+  // Clear existing comp records for this date, then re-insert fresh ones
+  await db.from('compensations').delete().eq('work_date',ds);
+
+  if(selectedType==='volunteer'){
+    // Save volunteer participants
+    for(const m of workedMembers){
+      await db.from('compensations').insert({
+        work_date:ds,member_name:m,
+        period_key:period?.period_key||null,
+        work_type:'volunteer',comp_type:'volunteer',
+        confirmed:true,comp_date:null,carried_to:null,
+      });
+    }
+  } else if(selectedType==='weekend_single'||selectedType==='weekend_both'){
     const wt=selectedType==='weekend_both'?'both':'single';
     for(const m of workedMembers){
       const mc=memberCompTypes[m]||{compType:selectedType==='weekend_both'?'weekend_dayoff':'half_am',compDate:nextWeekday(ds)};
       const carried=mc.compType==='carried';
       const compPayload={
-        work_date:ds,member_name:m,period_key:period.period_key,
+        work_date:ds,member_name:m,period_key:period?.period_key||null,
         work_type:wt,comp_type:mc.compType,
         comp_date:carried?null:mc.compDate,
-        confirmed:!carried,
-        carried_to:null,
+        confirmed:!carried,carried_to:null,
       };
-      // Handle carry-over
       if(carried){
-        const ni=S.periods.findIndex(p=>p.period_key===period.period_key)+1;
+        const ni=S.periods.findIndex(p=>p.period_key===period?.period_key)+1;
         const np=S.periods[ni];
         if(np){
           compPayload.carried_to=np.period_key;
@@ -861,7 +923,7 @@ async function saveSchedule(){
           });
         }
       }
-      await db.from('compensations').upsert(compPayload,{onConflict:'work_date,member_name'});
+      await db.from('compensations').insert(compPayload);
     }
   }
 
@@ -1251,6 +1313,157 @@ async function delHoliday(date){
   await db.from('holidays').delete().eq('date',date);
   delete S.holidays[date];
   renderHolidaySettings(); renderCalendar();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXCEL EXPORT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function generateExcelHTML(){
+  const period=curPeriod();
+  if(!period) return '';
+  const label=period.label||period.period_key;
+  const sd=parseDt(period.start_date), ed=parseDt(period.end_date);
+  const cs=new Date(sd); while(cs.getDay()!==0) cs.setDate(cs.getDate()-1);
+  const ce=new Date(ed); while(ce.getDay()!==6) ce.setDate(ce.getDate()+1);
+  const allMems=[...new Set(S.teams.filter(t=>t.active).flatMap(t=>t.members||[]))];
+
+  // Build week arrays
+  const weeks=[];
+  const cur=new Date(cs);
+  while(cur<=ce){
+    const wk=[];
+    for(let i=0;i<7;i++){wk.push(fmtDate(cur));cur.setDate(cur.getDate()+1);}
+    weeks.push(wk);
+  }
+
+  function cellBg(ds){
+    const inP=ds>=period.start_date&&ds<=period.end_date;
+    if(!inP) return '#f5f5f5';
+    const dw=parseDt(ds).getDay();
+    if(S.holidays[ds]||dw===0) return '#FFE4E4';
+    if(dw===6) return '#EFF6FF';
+    const sched=S.schedules[ds];
+    if(sched){const team=S.teams.find(t=>t.id===sched.team_id);if(team) return team.color+'CC';}
+    return '#FFFFFF';
+  }
+
+  function cellLines(ds){
+    const inP=ds>=period.start_date&&ds<=period.end_date;
+    if(!inP) return [];
+    const sched=S.schedules[ds];
+    if(!sched) return [];
+    const lines=[];
+    if(sched.schedule_type==='volunteer'){
+      const vols=(S.compsByWork[ds]||[]).filter(c=>c.work_type==='volunteer');
+      if(vols.length) lines.push(vols.map(c=>c.member_name).join(', '));
+      return lines;
+    }
+    const team=S.teams.find(t=>t.id===sched.team_id);
+    if(!team) return lines;
+    // Dayoffs on this date
+    const pdo=S.dayoffs[period.period_key]||{};
+    const dayoffMems=new Set(Object.entries(pdo).filter(([,d])=>d.dayoff_date===ds&&d.confirmed).map(([m])=>m));
+    // Active team members
+    const active=(team.members||[]).filter(m=>!dayoffMems.has(m));
+    if(active.length) lines.push(active.join(' '));
+    // Comp records where comp_date = ds (someone taking comp today)
+    (S.comps[ds]||[]).filter(c=>c.work_type!=='volunteer').forEach(c=>{
+      if(c.comp_type==='half_am') lines.push(`~13:30 ${c.member_name}`);
+      else if(c.comp_type==='half_pm') lines.push(`${c.member_name} 14:00~`);
+      else if(c.comp_type==='weekend_dayoff') lines.push(`${c.member_name} 보상휴가`);
+    });
+    // Dayoff notes
+    dayoffMems.forEach(m=>lines.push(`영업제외:${m}`));
+    return lines;
+  }
+
+  const W=['일','월','화','수','목','금','토'];
+  const hdrBg=['#FFE4E4','#F0F0F0','#F0F0F0','#F0F0F0','#F0F0F0','#F0F0F0','#EFF6FF'];
+  const hdrColor=['#ef4444','#333','#333','#333','#333','#333','#3b82f6'];
+
+  let h=`<table border="1" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-family:'맑은 고딕',Arial,sans-serif;font-size:9pt">`;
+
+  // Title row
+  h+=`<tr><td colspan="7" align="center" style="background:#4472C4;color:white;font-size:14pt;font-weight:bold;padding:10px 4px;height:44px">${label} 영업 활동 일정표</td></tr>`;
+  // Subtitle row
+  h+=`<tr><td colspan="7" align="center" style="font-size:10pt;padding:4px;height:26px">${label}(경력${allMems.length}명)</td></tr>`;
+  // Day header row
+  h+=`<tr>`;
+  for(let d=0;d<7;d++)
+    h+=`<td align="center" style="background:${hdrBg[d]};color:${hdrColor[d]};font-weight:bold;padding:5px;min-width:110px;border:1px solid #999">${W[d]}</td>`;
+  h+=`</tr>`;
+
+  // Weeks: 2 rows per week (date number row + content row)
+  for(const wk of weeks){
+    // Date number row (thin)
+    h+=`<tr style="height:20px">`;
+    for(const ds of wk){
+      const inP=ds>=period.start_date&&ds<=period.end_date;
+      const dt=parseDt(ds); const dw=dt.getDay(); const isH=!!S.holidays[ds];
+      const bg=cellBg(ds);
+      const color=isH||dw===0?'#ef4444':dw===6?'#3b82f6':'#333';
+      let dateLabel=String(dt.getDate());
+      if(isH&&inP) dateLabel+=`(${S.holidays[ds]})`;
+      h+=`<td style="background:${bg};vertical-align:middle;padding:2px 4px;font-size:8pt;color:${color};font-weight:bold;border:1px solid #ccc">`;
+      h+=inP?dateLabel:`<span style="color:#ccc">${dt.getDate()}</span>`;
+      h+=`</td>`;
+    }
+    h+=`</tr>`;
+
+    // Content row (tall)
+    h+=`<tr style="height:72px">`;
+    for(const ds of wk){
+      const bg=cellBg(ds);
+      const lines=cellLines(ds);
+      const content=lines.map(l=>`<div>${l}</div>`).join('');
+      h+=`<td style="background:${bg};vertical-align:top;padding:4px;font-size:9pt;border:1px solid #ccc">${content}</td>`;
+    }
+    h+=`</tr>`;
+  }
+
+  // Business hours section
+  h+=`<tr>
+    <td rowspan="2" align="center" style="font-weight:bold;background:#E8E8E8;padding:4px;border:1px solid #999">영업시간</td>
+    <td style="font-weight:bold;background:#F5F5F5;padding:4px;border:1px solid #ccc">평일</td>
+    <td style="font-weight:bold;padding:4px;border:1px solid #ccc">주간</td>
+    <td colspan="2" align="center" style="padding:4px;border:1px solid #ccc">09:30~18:00</td>
+    <td style="font-weight:bold;padding:4px;border:1px solid #ccc">야간</td>
+    <td style="padding:4px;border:1px solid #ccc">메인 : 18:00~22:00<br>서브 : 18:00~21:00</td>
+  </tr>
+  <tr>
+    <td style="font-weight:bold;background:#F5F5F5;padding:4px;border:1px solid #ccc">주말</td>
+    <td colspan="5" align="center" style="padding:4px;border:1px solid #ccc">메인 : 09:30~18:00&nbsp;&nbsp;&nbsp;서브 : 09:30~16:00</td>
+  </tr>`;
+
+  // Team summary
+  const activeTeams=S.teams.filter(t=>t.active);
+  h+=`<tr><td align="center" style="font-weight:bold;background:#E8E8E8;padding:4px;border:1px solid #999">영업조</td>`;
+  for(let i=0;i<6;i++){
+    const t=activeTeams[i];
+    if(t) h+=`<td align="center" style="background:${t.color}CC;padding:8px;font-weight:bold;border:1px solid #ccc">${(t.members||[]).join(',')}<br><span style="font-size:10pt">${i+1}</span></td>`;
+    else h+=`<td style="border:1px solid #ccc"></td>`;
+  }
+  h+=`</tr></table>`;
+  return h;
+}
+
+async function copyToExcel(){
+  const period=curPeriod();
+  if(!period){toast('영업 월을 먼저 선택하세요');return;}
+  const html=generateExcelHTML();
+  const fullHtml=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><meta name=ProgId content=Excel.Sheet><meta name=Generator content="Microsoft Excel 15"></head><body>${html}</body></html>`;
+  try{
+    await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'})})]);
+    toast('클립보드 복사 완료 — 엑셀에 붙여넣기 하세요');
+  }catch(e){
+    // Fallback: .xls download
+    const blob=new Blob([fullHtml],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`${period.period_key}-duty-roster.xls`;
+    a.click();
+    toast('엑셀 파일로 다운로드됨');
+  }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
