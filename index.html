@@ -263,6 +263,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
     </div>
 
     <div class="sec">
+      <div class="sec-hdr">데이터 백업/복원</div>
+      <div class="sec-body">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-g" style="flex:1" onclick="exportData()">📥 JSON 내보내기</button>
+          <label class="btn btn-g" style="flex:1;text-align:center;cursor:pointer;line-height:2">
+            📤 JSON 가져오기<input type="file" accept=".json" style="display:none" onchange="importData(event)">
+          </label>
+        </div>
+        <div style="font-size:11px;color:var(--text-sub);margin-top:8px">가져오기 시 현재 데이터가 모두 교체됩니다</div>
+      </div>
+    </div>
+
+    <div class="sec">
       <div class="sec-hdr">공휴일 관리</div>
       <div class="sec-body">
         <div id="holidaySettings"></div>
@@ -340,6 +353,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
     <div id="doContent"></div>
     <div style="margin-top:14px">
       <button class="btn btn-g btn-full" onclick="overlayClose('dayoffOverlay')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Period Add/Edit Sheet -->
+<div class="overlay" id="periodOverlay" onclick="overlayClose('periodOverlay',event)">
+  <div class="sheet">
+    <span class="sh-handle"></span>
+    <div class="sh-title" id="periodSheetTitle">영업 월 추가</div>
+    <div class="fg" id="periodKeyFg">
+      <label class="fl">영업 월 키</label>
+      <input type="text" class="finp" id="pKey" placeholder="예: 2026-07">
+    </div>
+    <div class="fg">
+      <label class="fl">이름</label>
+      <input type="text" class="finp" id="pLabelInp" placeholder="예: 7월 영업">
+    </div>
+    <div class="fg">
+      <label class="fl">시작일</label>
+      <input type="date" class="finp" id="pStart">
+    </div>
+    <div class="fg">
+      <label class="fl">종료일</label>
+      <input type="date" class="finp" id="pEnd">
+    </div>
+    <div class="fg">
+      <label class="fl">영업일수</label>
+      <input type="number" class="finp" id="pWorkDays" placeholder="0" min="0">
+    </div>
+    <div class="sh-acts">
+      <button class="btn btn-g" onclick="overlayClose('periodOverlay')">취소</button>
+      <button class="btn btn-p" onclick="savePeriodSheet()">저장</button>
     </div>
   </div>
 </div>
@@ -580,15 +625,13 @@ function renderCalendar() {
         else if(c.comp_type==='carried') badges.push(`<span class="badge b-carried">${c.member_name} 이월</span>`);
       });
 
-      // Warning: weekend work without confirmed comp
+      // Warning: weekend work without confirmed comp (only for members who have a comp record)
       if(isWknd&&sched&&inP){
         const wcs=S.compsByWork[ds]||[];
         const team2=S.teams.find(t=>t.id===sched.team_id);
-        if(team2&&(sched.schedule_type==='weekend_single'||sched.schedule_type==='weekend_both')){
-          const mems=team2.members||[];
-          mems.forEach(m=>{
-            const mc=wcs.find(c=>c.member_name===m);
-            if(!mc||!mc.confirmed) badges.push(`<span class="badge b-warn">⚠ ${m}</span>`);
+        if(team2&&(sched.schedule_type==='weekend_single'||sched.schedule_type==='weekend_both')&&wcs.length>0){
+          wcs.forEach(c=>{
+            if(!c.confirmed) badges.push(`<span class="badge b-warn">⚠ ${c.member_name}</span>`);
           });
         }
       }
@@ -637,8 +680,9 @@ function openSched(ds) {
       `<option value="${t.id}" ${sched&&sched.team_id===t.id?'selected':''}>${t.name}</option>`
     ).join('');
 
-  selectedType=sched?sched.schedule_type:(isWknd?'weekend_single':'normal');
-  renderTypeGrid(isWknd);
+  const isHoliday=!!S.holidays[ds];
+  selectedType=sched?sched.schedule_type:(isHoliday?'volunteer':(isWknd?'weekend_single':'normal'));
+  renderTypeGrid(isWknd,isHoliday);
   updateCompSection(isWknd);
 
   // Pre-populate worked members from existing comps
@@ -654,8 +698,10 @@ function openSched(ds) {
   document.getElementById('schedOverlay').classList.add('open');
 }
 
-function renderTypeGrid(isWknd) {
-  const types=isWknd?[
+function renderTypeGrid(isWknd,isHoliday) {
+  const types=isHoliday?[
+    {v:'volunteer',l:'자원근무',d:'공휴일 특별'},
+  ]:isWknd?[
     {v:'weekend_single',l:'주말 하루',d:'반일 보상'},
     {v:'weekend_both',  l:'주말 양일',d:'월차 보상'},
     {v:'volunteer',     l:'자원근무', d:'특별'},
@@ -663,21 +709,25 @@ function renderTypeGrid(isWknd) {
     {v:'normal',   l:'정상근무',d:''},
     {v:'volunteer',l:'자원근무',d:'특별'},
   ];
-  document.getElementById('typeGrid').innerHTML=types.map(t=>
-    `<div class="ropt ${selectedType===t.v?'on':''}" onclick="selectType('${t.v}',${isWknd})">${t.l}${t.d?`<br><small>${t.d}</small>`:''}</div>`
-  ).join('');
+  let html='';
+  if(isHoliday) html+='<div class="warn-box" style="margin-bottom:10px"><div class="warn-box-title">🎌 공휴일</div><div class="warn-box-sub">공휴일에는 자원근무만 배정할 수 있습니다</div></div>';
+  html+=`<div class="radio-g${isHoliday?'':' three'}" style="${isHoliday?'grid-template-columns:1fr':''}">`;
+  html+=types.map(t=>`<div class="ropt ${selectedType===t.v?'on':''}" onclick="selectType('${t.v}',${isWknd},${!!isHoliday})">${t.l}${t.d?`<br><small>${t.d}</small>`:''}</div>`).join('');
+  html+='</div>';
+  document.getElementById('typeGrid').innerHTML=html;
 }
 
-function selectType(v,isWknd){
+function selectType(v,isWknd,isHoliday){
   selectedType=v;
-  renderTypeGrid(isWknd);
+  renderTypeGrid(isWknd,isHoliday);
   updateCompSection(isWknd);
 }
 
 function onTeamChange(){
   const dt=parseDt(editDate);
   const isWknd=dt.getDay()===0||dt.getDay()===6;
-  renderTypeGrid(isWknd);
+  const isHoliday=!!S.holidays[editDate];
+  renderTypeGrid(isWknd,isHoliday);
   updateCompSection(isWknd);
 }
 
@@ -758,6 +808,25 @@ async function saveSchedule(){
 
   if(!teamId){ await deleteSchedule(); return; }
 
+  // Fix 3: 공휴일에는 자원근무만 허용
+  if(S.holidays[ds]&&selectedType!=='volunteer'){
+    toast('공휴일에는 자원근무만 배정할 수 있습니다');return;
+  }
+
+  // Fix 2: 중복 배정 방지 — 같은 기간에 동일 팀이 이미 다른 날짜에 배정되어 있으면 경고
+  const period=curPeriod();
+  if(period){
+    const dupDate=Object.entries(S.schedules).find(([d,sc])=>
+      sc.team_id===teamId && d!==ds &&
+      d>=period.start_date && d<=period.end_date
+    );
+    if(dupDate){
+      const team=S.teams.find(t=>t.id===teamId);
+      const confirmed=confirm(`⚠ ${team?.name||'해당 조'}은(는) 이미 ${dupDate[0]}에 배정되어 있습니다.\n그래도 중복 배정하시겠습니까?`);
+      if(!confirmed) return;
+    }
+  }
+
   const existing=S.schedules[ds];
   const payload={date:ds,team_id:teamId,schedule_type:selectedType,updated_at:new Date().toISOString()};
   let err;
@@ -802,7 +871,10 @@ async function saveSchedule(){
 
 async function deleteSchedule(){
   const ex=S.schedules[editDate];
-  if(ex){await db.from('schedules').delete().eq('id',ex.id);}
+  if(ex){
+    await db.from('compensations').delete().eq('work_date',editDate);
+    await db.from('schedules').delete().eq('id',ex.id);
+  }
   toast('배정 삭제됨');
   overlayClose('schedOverlay');
 }
@@ -944,6 +1016,33 @@ async function autoCheckNotifs(){
     }
   });
 
+  // Fix 8: 영업 시작 3일 전 배정 미완료 경고
+  for(const p of S.periods){
+    const start=parseDt(p.start_date);
+    const daysUntil=Math.floor((start-today)/86400000);
+    if(daysUntil>=0&&daysUntil<=3){
+      const cur2=new Date(parseDt(p.start_date));
+      const ed2=parseDt(p.end_date);
+      let missingDays=0;
+      while(cur2<=ed2){
+        const ds2=fmtDate(cur2);
+        const dw2=cur2.getDay();
+        if(dw2!==0&&dw2!==6&&!S.holidays[ds2]&&!S.schedules[ds2]) missingDays++;
+        cur2.setDate(cur2.getDate()+1);
+      }
+      if(missingDays>0){
+        const exists=S.notifs.some(n=>n.notif_type==='schedule_incomplete'&&n.message.includes(p.period_key));
+        if(!exists){
+          await db.from('notifications').insert({
+            notif_type:'schedule_incomplete',
+            message:`[${p.label||p.period_key}] 영업 시작 ${daysUntil}일 전인데 ${missingDays}일이 미배정 상태입니다.`,
+            target_date:p.start_date,is_read:false,
+          });
+        }
+      }
+    }
+  }
+
   const {data}=await db.from('notifications').select('*').order('created_at',{ascending:false}).limit(60);
   S.notifs=data||[];
   updateBadge();
@@ -978,7 +1077,19 @@ function renderTeamSettings(){
         <button class="btn btn-p btn-sm" onclick="addMember(${t.id})">추가</button>
       </div>
     </div>
-  `).join('');
+  `).join('')+`<button class="btn btn-g btn-full" style="margin-top:4px" onclick="addTeam()">+ 새 조 추가</button>`;
+}
+
+async function addTeam(){
+  const colors=['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+  const used=S.teams.map(t=>t.color);
+  const color=colors.find(c=>!used.includes(c))||'#6b7280';
+  const maxOrder=S.teams.reduce((m,t)=>Math.max(m,t.sort_order||0),0);
+  const {data,error}=await db.from('teams').insert({name:'새 조',color,active:true,members:[],sort_order:maxOrder+1}).select().single();
+  if(error){toast('오류: '+error.message);return;}
+  S.teams.push(data);
+  renderTeamSettings();
+  toast('새 조가 추가되었습니다');
 }
 
 async function changeColor(id,color){
@@ -1042,14 +1153,49 @@ function renderPeriodSettings(){
   `).join('');
 }
 
+let editPeriodId=null;
+
+function addPeriodPrompt(){
+  editPeriodId=null;
+  document.getElementById('periodSheetTitle').textContent='영업 월 추가';
+  document.getElementById('periodKeyFg').style.display='block';
+  document.getElementById('pKey').value='';
+  document.getElementById('pLabelInp').value='';
+  document.getElementById('pStart').value='';
+  document.getElementById('pEnd').value='';
+  document.getElementById('pWorkDays').value='';
+  document.getElementById('periodOverlay').classList.add('open');
+}
+
 function editPeriod(id){
   const p=S.periods.find(x=>x.id===id);
   if(!p) return;
-  const label=prompt('이름',p.label||''); if(label===null) return;
-  const start=prompt('시작일 (YYYY-MM-DD)',p.start_date); if(!start) return;
-  const end=prompt('종료일 (YYYY-MM-DD)',p.end_date); if(!end) return;
-  const wd=parseInt(prompt('영업일수',p.work_days))||p.work_days;
-  savePeriod(id,{label,start_date:start,end_date:end,work_days:wd});
+  editPeriodId=id;
+  document.getElementById('periodSheetTitle').textContent='영업 월 편집';
+  document.getElementById('periodKeyFg').style.display='none';
+  document.getElementById('pKey').value=p.period_key;
+  document.getElementById('pLabelInp').value=p.label||'';
+  document.getElementById('pStart').value=p.start_date;
+  document.getElementById('pEnd').value=p.end_date;
+  document.getElementById('pWorkDays').value=p.work_days;
+  document.getElementById('periodOverlay').classList.add('open');
+}
+
+async function savePeriodSheet(){
+  const key=document.getElementById('pKey').value.trim();
+  const label=document.getElementById('pLabelInp').value.trim();
+  const start=document.getElementById('pStart').value;
+  const end=document.getElementById('pEnd').value;
+  const wd=parseInt(document.getElementById('pWorkDays').value)||0;
+  if(!start||!end){toast('시작일과 종료일을 입력하세요');return;}
+  if(start>end){toast('종료일이 시작일보다 빠릅니다');return;}
+  if(editPeriodId){
+    await savePeriod(editPeriodId,{label:label||key,start_date:start,end_date:end,work_days:wd});
+  } else {
+    if(!key){toast('영업 월 키를 입력하세요');return;}
+    await insertPeriod({period_key:key,label:label||key,start_date:start,end_date:end,work_days:wd});
+  }
+  overlayClose('periodOverlay');
 }
 
 async function savePeriod(id,data){
@@ -1065,15 +1211,6 @@ async function delPeriod(id){
   await db.from('business_periods').delete().eq('id',id);
   S.periods=S.periods.filter(p=>p.id!==id);
   renderPeriodSettings();
-}
-
-function addPeriodPrompt(){
-  const key=prompt('영업 월 키 (예: 2026-07)'); if(!key) return;
-  const label=prompt('이름 (예: 7월 영업)')||key;
-  const start=prompt('시작일 (YYYY-MM-DD)'); if(!start) return;
-  const end=prompt('종료일 (YYYY-MM-DD)'); if(!end) return;
-  const wd=parseInt(prompt('영업일수','0'))||0;
-  insertPeriod({period_key:key,label,start_date:start,end_date:end,work_days:wd});
 }
 
 async function insertPeriod(data){
@@ -1114,6 +1251,68 @@ async function delHoliday(date){
   await db.from('holidays').delete().eq('date',date);
   delete S.holidays[date];
   renderHolidaySettings(); renderCalendar();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DATA BACKUP / RESTORE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function exportData(){
+  // Deduplicate compensations (stored in both S.comps and S.compsByWork)
+  const compMap={};
+  [...Object.values(S.comps).flat(),...Object.values(S.compsByWork).flat()].forEach(c=>{if(c.id)compMap[c.id]=c;});
+  const data={
+    teams:S.teams,
+    periods:S.periods,
+    holidays:Object.entries(S.holidays).map(([date,name])=>({date,name})),
+    schedules:Object.values(S.schedules),
+    compensations:Object.values(compMap),
+    dayoffs:Object.values(S.dayoffs).flatMap(x=>Object.values(x)),
+    exportedAt:new Date().toISOString(),
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`duty-roster-backup-${fmtDate(new Date())}.json`;
+  a.click();
+  toast('내보내기 완료');
+}
+
+async function importData(event){
+  const file=event.target.files[0];
+  if(!file) return;
+  if(!confirm('현재 모든 데이터를 백업 파일로 교체합니다.\n계속하시겠습니까?')){event.target.value='';return;}
+  try{
+    const text=await file.text();
+    const data=JSON.parse(text);
+    if(data.teams?.length){
+      await db.from('teams').delete().neq('id',0);
+      for(const t of data.teams) await db.from('teams').upsert(t,{onConflict:'id'});
+    }
+    if(data.periods?.length){
+      await db.from('business_periods').delete().neq('id',0);
+      for(const p of data.periods) await db.from('business_periods').upsert(p,{onConflict:'id'});
+    }
+    if(data.holidays?.length){
+      await db.from('holidays').delete().neq('date','0000-00-00');
+      await db.from('holidays').insert(data.holidays);
+    }
+    if(data.schedules?.length){
+      await db.from('schedules').delete().neq('id',0);
+      for(const s of data.schedules) await db.from('schedules').upsert(s,{onConflict:'id'});
+    }
+    if(data.compensations?.length){
+      await db.from('compensations').delete().neq('id',0);
+      for(const c of data.compensations) await db.from('compensations').upsert(c,{onConflict:'id'});
+    }
+    if(data.dayoffs?.length){
+      await db.from('monthly_dayoffs').delete().neq('id',0);
+      for(const d of data.dayoffs) await db.from('monthly_dayoffs').upsert(d,{onConflict:'id'});
+    }
+    await loadAll();
+    render();
+    toast('복원 완료');
+  }catch(e){toast('오류: '+e.message);}
+  event.target.value='';
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
