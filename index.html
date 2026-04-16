@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>영업 활동 일정표</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -19,71 +19,76 @@
   --success: #10b981;
   --radius: 10px;
   --shadow: 0 1px 4px rgba(0,0,0,.08);
-  --header-h: 54px;
-  --nav-h: 60px;
+  --header-h: 62px;
+  --nav-h: 0px;
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 
 /* ── Loading ── */
 #loading{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:999}
 .spin{width:38px;height:38px;border:3px solid #e5e7eb;border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── Header ── */
-.hdr{position:sticky;top:0;z-index:50;height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:8px}
-.hdr-title{font-size:15px;font-weight:800;white-space:nowrap;letter-spacing:-.3px}
-.period-nav{flex:1;display:flex;align-items:center;justify-content:center;gap:6px}
-.period-nav button{background:none;border:none;cursor:pointer;padding:4px 10px;font-size:20px;color:var(--text);border-radius:6px;line-height:1}
-.period-nav button:active{background:var(--bg)}
-.period-lbl{font-size:14px;font-weight:700;min-width:72px;text-align:center}
-.hdr-btn{background:none;border:none;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;position:relative}
-.hdr-btn:active{background:var(--bg)}
-.nbadge{position:absolute;top:2px;right:2px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 2px}
+/* ── Header (PC 최적화) ── */
+.hdr{position:sticky;top:0;z-index:50;height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:12px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.hdr-title{font-size:16px;font-weight:800;white-space:nowrap;letter-spacing:-.3px;color:var(--text);margin-right:4px}
+.period-nav{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.period-nav button{background:none;border:1px solid var(--border);cursor:pointer;padding:5px 12px;font-size:18px;color:var(--text);border-radius:6px;line-height:1;transition:background .12s}
+.period-nav button:hover{background:var(--bg)}
+.period-lbl{font-size:15px;font-weight:700;min-width:80px;text-align:center}
 
-/* ── Bottom Nav ── */
-.bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:50}
-.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;cursor:pointer;color:var(--text-sub);font-size:10px;font-family:inherit;position:relative;padding-bottom:2px}
-.bnav-item.on{color:var(--primary)}
-.bnav-icon{font-size:21px;line-height:1}
+/* ── Top Navigation ── */
+.tnav-wrap{display:flex;align-items:center;gap:2px;margin:0 12px}
+.tnav-item{background:none;border:none;cursor:pointer;padding:7px 18px;font-size:13px;font-weight:700;color:var(--text-sub);border-radius:8px;font-family:inherit;transition:all .15s;white-space:nowrap;position:relative}
+.tnav-item:hover{background:var(--bg);color:var(--text)}
+.tnav-item.on{background:var(--primary-light);color:var(--primary)}
+.nbadge{display:inline-flex;align-items:center;justify-content:center;background:var(--danger);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;padding:0 3px;margin-left:4px;vertical-align:middle}
+
+.hdr-spacer{flex:1}
+.hdr-action{background:var(--primary);color:#fff;border:none;cursor:pointer;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;transition:opacity .12s;white-space:nowrap}
+.hdr-action:hover{opacity:.88}
+
+/* ── Bottom Nav (hidden on PC) ── */
+.bnav{display:none}
 
 /* ── Pages ── */
-.page{display:none;padding:14px;padding-bottom:calc(var(--nav-h)+14px);max-width:960px;margin:0 auto}
+.page{display:none;padding:22px 28px 28px;max-width:1400px;margin:0 auto}
 .page.on{display:block}
-.pg-title{font-size:17px;font-weight:800;margin-bottom:14px}
+.pg-title{font-size:18px;font-weight:800;margin-bottom:16px}
 
 /* ── Legend ── */
-.legend{display:flex;flex-wrap:wrap;gap:8px;background:var(--surface);border-radius:var(--radius);padding:10px 12px;box-shadow:var(--shadow);margin-bottom:12px}
-.lg-item{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600}
-.lg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.legend{display:flex;flex-wrap:wrap;gap:10px;background:var(--surface);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow);margin-bottom:14px}
+.lg-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.lg-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0}
 
 /* ── Calendar ── */
 .cal-wrap{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
 .cal-hdr{display:grid;grid-template-columns:repeat(7,1fr);background:#f9fafb;border-bottom:1px solid var(--border)}
-.ch{padding:7px 3px;text-align:center;font-size:11px;font-weight:700;color:var(--text-sub)}
+.ch{padding:10px 4px;text-align:center;font-size:13px;font-weight:700;color:var(--text-sub)}
 .ch.sun{color:#ef4444}.ch.sat{color:#3b82f6}
 .cal-body{display:flex;flex-direction:column}
 .cal-week{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)}
 .cal-week:last-child{border-bottom:none}
 
-.cell{min-height:88px;padding:4px 3px;border-right:1px solid var(--border);cursor:pointer;position:relative;transition:background .12s}
+.cell{min-height:130px;padding:7px 6px;border-right:1px solid var(--border);cursor:pointer;position:relative;transition:background .12s}
 .cell:last-child{border-right:none}
-.cell:active{background:#f5f5f5}
-.cell.out{background:#fafafa;cursor:default;opacity:.45}
-.cell.out:active{background:#fafafa}
+.cell:hover{background:rgba(0,0,0,.025)}
+.cell.out{background:#fafafa;cursor:default;opacity:.4}
+.cell.out:hover{background:#fafafa}
 .cell.today{outline:2px solid var(--primary);outline-offset:-2px}
 .cell.holiday{background:#fff5f5!important}
 .cell.sunday .dnum{color:#ef4444}
 .cell.saturday .dnum{color:#3b82f6}
 .cell.holiday .dnum{color:#ef4444}
 
-.dnum{font-size:11px;font-weight:700;margin-bottom:1px}
-.hname{font-size:9px;color:#ef4444;margin-bottom:2px;line-height:1.2}
-.cteam{font-size:11px;font-weight:800;margin-bottom:1px;line-height:1.2}
-.cmembers{font-size:9px;color:rgba(0,0,0,.65);line-height:1.35;margin-bottom:2px}
-.cbadges{display:flex;flex-wrap:wrap;gap:2px;margin-top:1px}
+.dnum{font-size:13px;font-weight:700;margin-bottom:3px}
+.hname{font-size:10px;color:#ef4444;margin-bottom:3px;line-height:1.3}
+.cteam{font-size:12px;font-weight:800;margin-bottom:2px;line-height:1.3}
+.cmembers{font-size:11px;color:rgba(0,0,0,.65);line-height:1.45;margin-bottom:3px}
+.cbadges{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
 
-.badge{font-size:9px;padding:1px 4px;border-radius:3px;font-weight:700;white-space:nowrap}
+.badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;white-space:nowrap}
 .b-dayoff{background:#dcfce7;color:#166534}
 .b-ham{background:#dbeafe;color:#1d4ed8}
 .b-hpm{background:#ede9fe;color:#5b21b6}
@@ -91,114 +96,109 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
 .b-warn{background:#fee2e2;color:#991b1b}
 .b-vol{background:#f0fdf4;color:#14532d}
 
-@media(max-width:480px){
-  .cell{min-height:68px}
-  .cmembers{display:none}
-}
-
-/* ── FAB ── */
-.fab{position:fixed;bottom:calc(var(--nav-h)+14px);right:16px;width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:20px;box-shadow:0 4px 12px rgba(59,130,246,.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform .15s}
-.fab:active{transform:scale(.93)}
-
 /* ── Notifications ── */
-.notif-item{background:var(--surface);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:flex-start}
+.notif-item{background:var(--surface);border-radius:var(--radius);padding:14px 18px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start}
 .notif-item.unread{border-left:3px solid var(--primary)}
-.ni-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.ni-icon{font-size:20px;flex-shrink:0;margin-top:1px}
 .ni-body{flex:1;min-width:0}
-.ni-msg{font-size:13px;line-height:1.45;margin-bottom:3px}
-.ni-time{font-size:11px;color:var(--text-sub)}
-.ni-readbtn{background:none;border:none;cursor:pointer;color:var(--text-sub);font-size:16px;padding:0 2px;flex-shrink:0}
-.empty{text-align:center;padding:52px 16px;color:var(--text-sub)}
-.empty-ico{font-size:44px;margin-bottom:10px}
-.empty-txt{font-size:13px}
+.ni-msg{font-size:14px;line-height:1.5;margin-bottom:4px}
+.ni-time{font-size:12px;color:var(--text-sub)}
+.ni-readbtn{background:none;border:none;cursor:pointer;color:var(--text-sub);font-size:18px;padding:0 4px;flex-shrink:0}
+.ni-readbtn:hover{color:var(--primary)}
+.empty{text-align:center;padding:60px 16px;color:var(--text-sub)}
+.empty-ico{font-size:48px;margin-bottom:12px}
+.empty-txt{font-size:14px}
 
 /* ── Settings ── */
-.sec{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
-.sec-hdr{padding:12px 14px;font-size:13px;font-weight:800;background:#f9fafb;border-bottom:1px solid var(--border);letter-spacing:.2px}
-.sec-body{padding:14px}
+.sec{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.sec-hdr{padding:13px 18px;font-size:14px;font-weight:800;background:#f9fafb;border-bottom:1px solid var(--border);letter-spacing:.2px}
+.sec-body{padding:16px 18px}
 
-.tcard{border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:10px}
-.tcard-top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
-.t-dot{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid rgba(0,0,0,.1);flex-shrink:0;position:relative}
+.tcard{border:1px solid var(--border);border-radius:8px;padding:13px;margin-bottom:12px}
+.tcard-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.t-dot{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid rgba(0,0,0,.1);flex-shrink:0;position:relative}
 .t-color-inp{opacity:0;position:absolute;inset:0;cursor:pointer;border-radius:50%}
-.t-name{flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:13px;font-weight:700;font-family:inherit;min-width:0}
-.t-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.t-name{flex:1;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:14px;font-weight:700;font-family:inherit;min-width:0}
+.t-name:hover{border-color:var(--primary)}
+.t-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .12s}
+.t-toggle:hover{border-color:var(--primary);color:var(--primary)}
 .t-toggle.on{background:var(--primary);color:#fff;border-color:var(--primary)}
 
-.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
-.chip{display:flex;align-items:center;gap:3px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 9px;font-size:12px}
-.chip button{background:none;border:none;cursor:pointer;color:#aaa;font-size:13px;padding:0;line-height:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px}
+.chip button{background:none;border:none;cursor:pointer;color:#aaa;font-size:14px;padding:0;line-height:1;transition:color .12s}
+.chip button:hover{color:var(--danger)}
 
-.addrow{display:flex;gap:5px}
-.addrow input{flex:1;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit;min-width:0}
+.addrow{display:flex;gap:6px}
+.addrow input{flex:1;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;min-width:0}
+.addrow input:hover,.addrow input:focus{border-color:var(--primary);outline:none}
 
-.lrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)}
+.lrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
 .lrow:last-child{border-bottom:none}
 .lrow-info{flex:1;min-width:0}
-.lrow-t{font-size:13px;font-weight:700}
-.lrow-s{font-size:11px;color:var(--text-sub);margin-top:1px}
+.lrow-t{font-size:14px;font-weight:700}
+.lrow-s{font-size:12px;color:var(--text-sub);margin-top:2px}
 
 /* ── Buttons ── */
-.btn{border:none;border-radius:7px;padding:9px 14px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;line-height:1;transition:opacity .12s}
-.btn:active{opacity:.8}
+.btn{border:none;border-radius:7px;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;line-height:1;transition:all .12s}
+.btn:hover{opacity:.88}
 .btn-p{background:var(--primary);color:#fff}
 .btn-d{background:var(--danger);color:#fff}
 .btn-g{background:var(--bg);color:var(--text);border:1px solid var(--border)}
-.btn-sm{padding:5px 9px;font-size:11px}
-.btn-full{width:100%;padding:11px;font-size:14px}
+.btn-g:hover{border-color:#9ca3af}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-full{width:100%;padding:12px;font-size:14px}
 
 /* ── Overlay / Sheet ── */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:flex-end}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center}
 .overlay.open{display:flex}
-@media(min-width:640px){.overlay{align-items:center;justify-content:center}}
+.sheet{background:var(--surface);width:520px;border-radius:14px;max-height:86vh;overflow-y:auto;padding:24px 22px 28px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.sh-handle{display:none}
+.sh-title{font-size:16px;font-weight:800;margin-bottom:16px}
 
-.sheet{background:var(--surface);width:100%;border-radius:16px 16px 0 0;max-height:88vh;overflow-y:auto;padding:18px 16px 28px}
-@media(min-width:640px){.sheet{width:460px;border-radius:14px;max-height:82vh}}
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.fsel,.finp{width:100%;border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;transition:border-color .12s}
+.fsel:hover,.finp:hover,.fsel:focus,.finp:focus{border-color:var(--primary);outline:none}
 
-.sh-handle{width:34px;height:4px;background:#ddd;border-radius:2px;margin:-4px auto 14px;display:block}
-@media(min-width:640px){.sh-handle{display:none}}
-.sh-title{font-size:15px;font-weight:800;margin-bottom:14px}
-
-.fg{margin-bottom:12px}
-.fl{display:block;font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
-.fsel,.finp{width:100%;border:1px solid var(--border);border-radius:7px;padding:9px 11px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit}
-
-.radio-g{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.radio-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .radio-g.three{grid-template-columns:1fr 1fr 1fr}
-.ropt{border:2px solid var(--border);border-radius:8px;padding:9px 6px;cursor:pointer;text-align:center;font-size:12px;font-weight:700;transition:all .12s;line-height:1.4}
-.ropt small{font-size:10px;font-weight:400;opacity:.7}
+.ropt{border:2px solid var(--border);border-radius:8px;padding:10px 8px;cursor:pointer;text-align:center;font-size:13px;font-weight:700;transition:all .12s;line-height:1.4}
+.ropt:hover{border-color:var(--primary);background:var(--primary-light)}
+.ropt small{font-size:11px;font-weight:400;opacity:.7}
 .ropt.on{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
 
-.sh-acts{display:flex;gap:7px;margin-top:16px}
+.sh-acts{display:flex;gap:8px;margin-top:20px}
 .sh-acts .btn{flex:1;padding:12px}
 
-.warn-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:11px 12px;margin-bottom:12px}
-.warn-box-title{font-size:12px;font-weight:800;color:#92400e;margin-bottom:3px}
-.warn-box-sub{font-size:11px;color:#78350f}
+.warn-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.warn-box-title{font-size:13px;font-weight:800;color:#92400e;margin-bottom:3px}
+.warn-box-sub{font-size:12px;color:#78350f}
 
 /* ── Dayoff Sheet ── */
-.do-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.do-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
 .do-row:last-child{border-bottom:none}
-.do-name{font-size:13px;font-weight:700;min-width:60px}
-.do-status{flex:1;font-size:12px;color:var(--text-sub)}
-.do-date{font-size:12px;color:var(--text);font-weight:600}
+.do-name{font-size:14px;font-weight:700;min-width:72px}
+.do-status{flex:1;font-size:13px;color:var(--text-sub)}
+.do-date{font-size:13px;color:var(--text);font-weight:600}
 
 /* ── Member checkboxes ── */
-.mem-checks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
-.mem-check{display:flex;align-items:center;gap:4px;background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:600;transition:all .12s}
+.mem-checks{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}
+.mem-check{display:flex;align-items:center;gap:5px;background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer;font-size:13px;font-weight:600;transition:all .12s}
+.mem-check:hover{border-color:var(--primary)}
 .mem-check.on{background:var(--primary-light);border-color:var(--primary);color:var(--primary)}
 .mem-check input{display:none}
 
 /* ── Comp per member ── */
-.comp-member-block{background:#f8f9ff;border:1px solid #dbeafe;border-radius:8px;padding:10px;margin-top:6px}
-.cmb-name{font-size:12px;font-weight:800;color:var(--primary);margin-bottom:8px}
+.comp-member-block{background:#f8f9ff;border:1px solid #dbeafe;border-radius:8px;padding:12px;margin-top:8px}
+.cmb-name{font-size:13px;font-weight:800;color:var(--primary);margin-bottom:10px}
 
 /* ── Toast ── */
-.toast{position:fixed;bottom:calc(var(--nav-h)+16px);left:50%;transform:translateX(-50%) translateY(8px);background:#1f2937;color:#fff;padding:9px 18px;border-radius:20px;font-size:12px;z-index:400;opacity:0;transition:all .25s;white-space:nowrap;pointer-events:none}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:#1f2937;color:#fff;padding:10px 22px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:all .25s;white-space:nowrap;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ── Info box ── */
-.info-box{background:var(--primary-light);border:1px solid #bfdbfe;border-radius:8px;padding:11px 13px;margin-bottom:12px;font-size:12px;color:#1d4ed8;line-height:1.5}
+.info-box{background:var(--primary-light);border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#1d4ed8;line-height:1.5}
 </style>
 </head>
 <body>
@@ -212,18 +212,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
 <!-- App -->
 <div id="app" style="display:none">
 
-  <!-- Header -->
+  <!-- Header (PC 최적화) -->
   <header class="hdr">
-    <div class="hdr-title">🗓 일정표</div>
-    <div class="period-nav">
+    <div class="hdr-title">🗓 영업 활동 일정표</div>
+    <div class="period-nav" id="calPeriodNav">
       <button onclick="changePeriod(-1)">‹</button>
       <span class="period-lbl" id="pLabel">-</span>
       <button onclick="changePeriod(1)">›</button>
     </div>
-    <button class="hdr-btn" onclick="goPage('notify')" title="알림">
-      🔔<span class="nbadge" id="nbadge" style="display:none">0</span>
-    </button>
-    <button class="hdr-btn" onclick="goPage('settings')" title="설정">⚙️</button>
+    <div class="tnav-wrap">
+      <button class="tnav-item on" id="tn-calendar" onclick="goPage('calendar')">📅 캘린더</button>
+      <button class="tnav-item" id="tn-notify" onclick="goPage('notify')">🔔 알림<span class="nbadge" id="nbadge" style="display:none">0</span></button>
+      <button class="tnav-item" id="tn-settings" onclick="goPage('settings')">⚙️ 설정</button>
+    </div>
+    <div class="hdr-spacer"></div>
+    <button class="hdr-action" onclick="openDayoffSheet()">📋 월차 관리</button>
   </header>
 
   <!-- Calendar Page -->
@@ -265,8 +268,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
     <div class="sec">
       <div class="sec-hdr">달력 내보내기</div>
       <div class="sec-body">
-        <button class="btn btn-p btn-full" onclick="copyToExcel()">📋 엑셀 양식으로 클립보드 복사</button>
-        <div style="font-size:11px;color:var(--text-sub);margin-top:8px">복사 후 엑셀에서 Ctrl+V로 붙여넣기 하세요. 클립보드가 차단된 경우 파일로 다운로드됩니다.</div>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <button class="btn btn-p" style="flex:1" onclick="copyToExcel()">📋 클립보드 복사 (붙여넣기용)</button>
+          <button class="btn btn-g" style="flex:1" onclick="saveExcel()">💾 엑셀 파일로 저장</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-sub)">클립보드 복사: 엑셀에서 Ctrl+V&nbsp;&nbsp;|&nbsp;&nbsp;파일 저장: .xls 직접 다운로드</div>
       </div>
     </div>
 
@@ -296,21 +302,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
     </div>
   </div>
 
-  <!-- FAB: 월차 관리 -->
-  <button class="fab" onclick="openDayoffSheet()" title="월차 관리">📋</button>
-
-  <!-- Bottom Nav -->
-  <nav class="bnav">
-    <button class="bnav-item on" id="bn-calendar" onclick="goPage('calendar')">
-      <span class="bnav-icon">📅</span><span>캘린더</span>
-    </button>
-    <button class="bnav-item" id="bn-notify" onclick="goPage('notify')">
-      <span class="bnav-icon">🔔</span><span>알림</span>
-    </button>
-    <button class="bnav-item" id="bn-settings" onclick="goPage('settings')">
-      <span class="bnav-icon">⚙️</span><span>설정</span>
-    </button>
-  </nav>
 </div><!-- /app -->
 
 <!-- Schedule Edit Sheet -->
@@ -319,7 +310,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',san
     <span class="sh-handle"></span>
     <div class="sh-title" id="schedTitle">배정 편집</div>
 
-    <div class="fg">
+    <div class="fg" id="teamSelFg">
       <label class="fl">영업조</label>
       <select class="fsel" id="teamSel" onchange="onTeamChange()">
         <option value="">-- 배정 없음 --</option>
@@ -537,10 +528,13 @@ function render(){ goPage(S.page); }
 function goPage(pg) {
   S.page=pg;
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));
-  document.querySelectorAll('.bnav-item').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.tnav-item').forEach(e=>e.classList.remove('on'));
   document.getElementById('pg-'+pg).classList.add('on');
-  const bn=document.getElementById('bn-'+pg);
-  if(bn) bn.classList.add('on');
+  const tn=document.getElementById('tn-'+pg);
+  if(tn) tn.classList.add('on');
+  // 캘린더 페이지일 때만 기간 네비 표시
+  const pnav=document.getElementById('calPeriodNav');
+  if(pnav) pnav.style.display=pg==='calendar'?'flex':'none';
   if(pg==='calendar') renderCalendar();
   if(pg==='notify') renderNotifs();
   if(pg==='settings') renderSettings();
@@ -685,22 +679,32 @@ function openSched(ds) {
   const dt=parseDt(ds);
   const dw=dt.getDay();
   const isWknd=dw===0||dw===6;
+  const isHoliday=!!S.holidays[ds];
+  const isVolOnly=isWknd||isHoliday; // 주말/공휴일: 팀 없이 인원 직접 선택
   const DAY=['일','월','화','수','목','금','토'];
 
   document.getElementById('schedTitle').textContent=
     `${dt.getMonth()+1}월 ${dt.getDate()}일 (${DAY[dw]}) 배정`;
 
-  // Team select
+  // 주말/공휴일은 팀 선택기와 유형 선택기 숨김
+  document.getElementById('teamSelFg').style.display=isVolOnly?'none':'block';
+  document.getElementById('typeSection').style.display=isVolOnly?'none':'block';
+
+  // Team select (평일만)
   const sel=document.getElementById('teamSel');
   sel.innerHTML='<option value="">-- 배정 없음 --</option>'+
     S.teams.filter(t=>t.active).map(t=>
       `<option value="${t.id}" ${sched&&sched.team_id===t.id?'selected':''}>${t.name}</option>`
     ).join('');
 
-  const isHoliday=!!S.holidays[ds];
-  selectedType=sched?sched.schedule_type:(isHoliday?'volunteer':(isWknd?'weekend_single':'normal'));
+  // selectedType 결정
+  if(isVolOnly){
+    selectedType='volunteer';
+  } else {
+    selectedType=sched?sched.schedule_type:'normal';
+  }
 
-  // Pre-populate workers BEFORE rendering UI (so UI shows existing members correctly)
+  // Pre-populate workers BEFORE rendering UI
   if(sched){
     const wcs=S.compsByWork[ds]||[];
     if(sched.schedule_type==='volunteer'){
@@ -713,7 +717,7 @@ function openSched(ds) {
     }
   }
 
-  renderTypeGrid(isWknd,isHoliday);
+  if(!isVolOnly) renderTypeGrid(isWknd,isHoliday);
   updateCompSection(isWknd);
 
   document.getElementById('delBtn').style.display=sched?'block':'none';
@@ -859,19 +863,22 @@ function setMC(m,field,val){
 }
 
 async function saveSchedule(){
-  const teamId=parseInt(document.getElementById('teamSel').value)||null;
   const ds=editDate;
+  const dt=parseDt(ds);
+  const dw=dt.getDay();
+  const isWknd=dw===0||dw===6;
+  const isHoliday=!!S.holidays[ds];
+  const isVolOnly=isWknd||isHoliday;
 
-  if(!teamId){ await deleteSchedule(); return; }
+  // 주말/공휴일: teamId 없이 저장 / 평일: 팀 선택 필수
+  const teamId=isVolOnly?null:(parseInt(document.getElementById('teamSel').value)||null);
+  const type=isVolOnly?'volunteer':selectedType;
 
-  // Fix 3: 공휴일에는 자원근무만 허용
-  if(S.holidays[ds]&&selectedType!=='volunteer'){
-    toast('공휴일에는 자원근무만 배정할 수 있습니다');return;
-  }
+  if(!isVolOnly&&!teamId){ await deleteSchedule(); return; }
 
-  // Fix 2: 중복 배정 방지 — 같은 기간에 동일 팀이 이미 다른 날짜에 배정되어 있으면 경고
+  // 중복 배정 방지 (평일만)
   const period=curPeriod();
-  if(period){
+  if(!isVolOnly&&period){
     const dupDate=Object.entries(S.schedules).find(([d,sc])=>
       sc.team_id===teamId && d!==ds &&
       d>=period.start_date && d<=period.end_date
@@ -884,7 +891,7 @@ async function saveSchedule(){
   }
 
   const existing=S.schedules[ds];
-  const payload={date:ds,team_id:teamId,schedule_type:selectedType,updated_at:new Date().toISOString()};
+  const payload={date:ds,team_id:teamId,schedule_type:type,updated_at:new Date().toISOString()};
   let err;
   if(existing) ({error:err}=await db.from('schedules').update(payload).eq('id',existing.id));
   else ({error:err}=await db.from('schedules').insert(payload));
@@ -893,7 +900,7 @@ async function saveSchedule(){
   // Clear existing comp records for this date, then re-insert fresh ones
   await db.from('compensations').delete().eq('work_date',ds);
 
-  if(selectedType==='volunteer'){
+  if(type==='volunteer'){
     // Save volunteer participants
     for(const m of workedMembers){
       await db.from('compensations').insert({
@@ -903,10 +910,10 @@ async function saveSchedule(){
         confirmed:true,comp_date:null,carried_to:null,
       });
     }
-  } else if(selectedType==='weekend_single'||selectedType==='weekend_both'){
-    const wt=selectedType==='weekend_both'?'both':'single';
+  } else if(type==='weekend_single'||type==='weekend_both'){
+    const wt=type==='weekend_both'?'both':'single';
     for(const m of workedMembers){
-      const mc=memberCompTypes[m]||{compType:selectedType==='weekend_both'?'weekend_dayoff':'half_am',compDate:nextWeekday(ds)};
+      const mc=memberCompTypes[m]||{compType:type==='weekend_both'?'weekend_dayoff':'half_am',compDate:nextWeekday(ds)};
       const carried=mc.compType==='carried';
       const compPayload={
         work_date:ds,member_name:m,period_key:period?.period_key||null,
@@ -1448,6 +1455,19 @@ function generateExcelHTML(){
   }
   h+=`</tr></table>`;
   return h;
+}
+
+async function saveExcel(){
+  const period=curPeriod();
+  if(!period){toast('영업 월을 먼저 선택하세요');return;}
+  const html=generateExcelHTML();
+  const fullHtml=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>${html}</body></html>`;
+  const blob=new Blob([fullHtml],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`${period.period_key}-duty-roster.xls`;
+  a.click();
+  toast('엑셀 파일 저장됨');
 }
 
 async function copyToExcel(){
