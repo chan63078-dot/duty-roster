@@ -95,6 +95,21 @@ body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFon
 .b-carried{background:#fef3c7;color:#92400e}
 .b-warn{background:#fee2e2;color:#991b1b}
 .b-vol{background:#f0fdf4;color:#14532d}
+.b-excl{background:#fce7f3;color:#9d174d}
+/* ── Comp Page ── */
+.comp-pg-wrap{max-width:720px;margin:0 auto;padding:20px 16px}
+.comp-section{background:var(--surface);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.comp-section-hdr{font-size:13px;font-weight:800;color:var(--text-sub);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+.comp-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);flex-wrap:wrap}
+.comp-item:first-of-type{border-top:none}
+.ci-name{font-size:13px;font-weight:800;min-width:64px}
+.ci-work{font-size:11px;color:var(--text-sub);min-width:72px}
+.ci-type{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.ci-date-inp{border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface)}
+.ci-apply{background:var(--success);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.ci-apply:hover{opacity:.85}
+.ci-done{font-size:11px;font-weight:700;color:var(--success)}
+.ci-empty{text-align:center;padding:24px;color:var(--text-sub);font-size:13px}
 
 /* ── Notifications ── */
 .notif-item{background:var(--surface);border-radius:var(--radius);padding:14px 18px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start}
@@ -223,6 +238,7 @@ body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFon
     <div class="tnav-wrap">
       <button class="tnav-item on" id="tn-calendar" onclick="goPage('calendar')">📅 캘린더</button>
       <button class="tnav-item" id="tn-notify" onclick="goPage('notify')">🔔 알림<span class="nbadge" id="nbadge" style="display:none">0</span></button>
+      <button class="tnav-item" id="tn-comp" onclick="goPage('comp')">💰 보상현황</button>
       <button class="tnav-item" id="tn-settings" onclick="goPage('settings')">⚙️ 설정</button>
     </div>
     <div class="hdr-spacer"></div>
@@ -246,6 +262,12 @@ body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFon
   <div id="pg-notify" class="page">
     <div class="pg-title">🔔 알림</div>
     <div id="notifList"></div>
+  </div>
+
+  <!-- Comp Page -->
+  <div id="pg-comp" class="page">
+    <div class="pg-title">💰 보상 현황</div>
+    <div class="comp-pg-wrap" id="compPageWrap"></div>
   </div>
 
   <!-- Settings Page -->
@@ -538,6 +560,7 @@ function goPage(pg) {
   if(pg==='calendar') renderCalendar();
   if(pg==='notify') renderNotifs();
   if(pg==='settings') renderSettings();
+  if(pg==='comp') renderCompPage();
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -634,6 +657,7 @@ function renderCalendar() {
         else if(c.comp_type==='half_pm') badges.push(`<span class="badge b-hpm">${c.member_name} 14:00~</span>`);
         else if(c.comp_type==='weekend_dayoff') badges.push(`<span class="badge b-dayoff">${c.member_name} 보상휴가</span>`);
         else if(c.comp_type==='carried') badges.push(`<span class="badge b-carried">${c.member_name} 이월</span>`);
+        else if(c.comp_type==='excl') badges.push(`<span class="badge b-excl">${c.member_name} 영업제외</span>`);
       });
 
       // Warning: weekend work without confirmed comp (only for members who have a comp record)
@@ -824,6 +848,7 @@ function renderCompPerMember(mems){
     {v:'weekend_dayoff',l:'보상 월차',d:'전일 휴무'},
     {v:'half_am',l:'오전 반일',d:'~13:30'},
     {v:'half_pm',l:'오후 반일',d:'14:00~'},
+    {v:'excl',l:'영업제외',d:'차주 미포함'},
     {v:'carried',l:'다음달 이월',d:'미확정'},
   ]:[
     {v:'half_am',l:'오전 반일',d:'~13:30'},
@@ -921,7 +946,7 @@ async function saveSchedule(){
         work_date:ds,member_name:m,period_key:period?.period_key||null,
         work_type:wt,comp_type:mc.compType,
         comp_date:carried?null:mc.compDate,
-        confirmed:!carried,carried_to:null,
+        confirmed:false,carried_to:null,
       };
       if(carried){
         const ni=S.periods.findIndex(p=>p.period_key===period?.period_key)+1;
@@ -1038,6 +1063,89 @@ function renderNotifs(){
       ${!n.is_read?`<button class="ni-readbtn" onclick="markRead(${n.id})">✓</button>`:''}
     </div>`
   ).join('');
+}
+
+function renderCompPage(){
+  const period=curPeriod();
+  const wrap=document.getElementById('compPageWrap');
+  if(!wrap) return;
+  if(!period){wrap.innerHTML='<div class="ci-empty">영업 월을 먼저 선택하세요</div>';return;}
+
+  // 현재 기간의 모든 comp 수집 (중복 제거)
+  const compMap={};
+  [...Object.values(S.comps).flat(),...Object.values(S.compsByWork).flat()].forEach(c=>{
+    if(c.id&&c.period_key===period.period_key) compMap[c.id]=c;
+  });
+  const comps=Object.values(compMap).filter(c=>c.work_type!=='volunteer');
+  if(!comps.length){wrap.innerHTML='<div class="ci-empty">이번 기간 보상 내역이 없습니다</div>';return;}
+
+  const typeLabel={half_am:'오전 반일',half_pm:'오후 반일',weekend_dayoff:'보상 월차',excl:'영업제외',carried:'이월'};
+  const typeClass={half_am:'b-ham',half_pm:'b-hpm',weekend_dayoff:'b-dayoff',excl:'b-excl',carried:'b-carried'};
+  const nextWd=ds=>{ const d=parseDt(ds);d.setDate(d.getDate()+1);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return fmtDate(d);};
+
+  // 미확정 / 확정 분리
+  const pending=comps.filter(c=>!c.confirmed).sort((a,b)=>a.work_date.localeCompare(b.work_date));
+  const done=comps.filter(c=>c.confirmed).sort((a,b)=>a.work_date.localeCompare(b.work_date));
+
+  function row(c){
+    const tl=typeLabel[c.comp_type]||c.comp_type;
+    const tc=typeClass[c.comp_type]||'b-carried';
+    const defaultDate=c.comp_date||nextWd(c.work_date);
+    if(!c.confirmed){
+      const dateInput=c.comp_type==='carried'
+        ?`<input type="date" class="ci-date-inp" id="cd-${c.id}" value="${defaultDate}">`
+        :`<input type="date" class="ci-date-inp" id="cd-${c.id}" value="${defaultDate}">`;
+      return `<div class="comp-item">
+        <span class="ci-name">${c.member_name}</span>
+        <span class="ci-work">근무: ${c.work_date}</span>
+        <span class="ci-type badge ${tc}">${tl}</span>
+        ${dateInput}
+        <button class="ci-apply" onclick="applyComp(${c.id})">✅ 적용</button>
+      </div>`;
+    } else {
+      return `<div class="comp-item">
+        <span class="ci-name">${c.member_name}</span>
+        <span class="ci-work">근무: ${c.work_date}</span>
+        <span class="ci-type badge ${tc}">${tl}</span>
+        <span style="font-size:12px;color:var(--text-sub)">${c.comp_date||'-'}</span>
+        <span class="ci-done">✓ 적용완료</span>
+      </div>`;
+    }
+  }
+
+  let html='';
+  if(pending.length){
+    html+=`<div class="comp-section"><div class="comp-section-hdr">⏳ 적용 대기 (${pending.length}건)</div>`;
+    html+=pending.map(row).join('');
+    html+='</div>';
+  }
+  if(done.length){
+    html+=`<div class="comp-section"><div class="comp-section-hdr">✅ 적용 완료 (${done.length}건)</div>`;
+    html+=done.map(row).join('');
+    html+='</div>';
+  }
+  wrap.innerHTML=html;
+}
+
+async function applyComp(id){
+  const compMap={};
+  [...Object.values(S.comps).flat(),...Object.values(S.compsByWork).flat()].forEach(c=>{if(c.id)compMap[c.id]=c;});
+  const c=compMap[id];
+  if(!c) return;
+  const dateEl=document.getElementById('cd-'+id);
+  const compDate=dateEl?dateEl.value:c.comp_date;
+  if(!compDate&&c.comp_type!=='excl'){toast('보상 날짜를 선택하세요');return;}
+  const {error}=await db.from('compensations').update({confirmed:true,comp_date:compDate||null}).eq('id',id);
+  if(error){toast('오류: '+error.message);return;}
+  // 로컬 업데이트
+  c.confirmed=true;c.comp_date=compDate||null;
+  // realtime이 처리하지만 즉시 반영
+  if(compDate){
+    (S.comps[compDate]=S.comps[compDate]||[]).push(c);
+  }
+  toast('✅ 보상 적용 완료');
+  renderCompPage();
+  renderCalendar();
 }
 
 async function markRead(id){
@@ -1355,7 +1463,7 @@ function generateExcelHTML(){
     if(S.holidays[ds]||dw===0) return '#FFE4E4';
     if(dw===6) return '#EFF6FF';
     const sched=S.schedules[ds];
-    if(sched){const team=S.teams.find(t=>t.id===sched.team_id);if(team) return team.color+'CC';}
+    if(sched){const team=S.teams.find(t=>t.id===sched.team_id);if(team) return team.color;}
     return '#FFFFFF';
   }
 
@@ -1383,6 +1491,7 @@ function generateExcelHTML(){
       if(c.comp_type==='half_am') lines.push(`~13:30 ${c.member_name}`);
       else if(c.comp_type==='half_pm') lines.push(`${c.member_name} 14:00~`);
       else if(c.comp_type==='weekend_dayoff') lines.push(`${c.member_name} 보상휴가`);
+      else if(c.comp_type==='excl') lines.push(`${c.member_name} 영업제외`);
     });
     // Dayoff notes
     dayoffMems.forEach(m=>lines.push(`영업제외:${m}`));
@@ -1408,7 +1517,7 @@ function generateExcelHTML(){
   // Weeks: 2 rows per week (date number row + content row)
   for(const wk of weeks){
     // Date number row (thin)
-    h+=`<tr style="height:20px">`;
+    h+=`<tr style="height:22px">`;
     for(const ds of wk){
       const inP=ds>=period.start_date&&ds<=period.end_date;
       const dt=parseDt(ds); const dw=dt.getDay(); const isH=!!S.holidays[ds];
@@ -1423,7 +1532,7 @@ function generateExcelHTML(){
     h+=`</tr>`;
 
     // Content row (tall)
-    h+=`<tr style="height:72px">`;
+    h+=`<tr style="height:80px">`;
     for(const ds of wk){
       const bg=cellBg(ds);
       const lines=cellLines(ds);
@@ -1452,7 +1561,7 @@ function generateExcelHTML(){
   h+=`<tr><td align="center" style="font-weight:bold;background:#E8E8E8;padding:4px;border:1px solid #999">영업조</td>`;
   for(let i=0;i<6;i++){
     const t=activeTeams[i];
-    if(t) h+=`<td align="center" style="background:${t.color}CC;padding:8px;font-weight:bold;border:1px solid #ccc">${(t.members||[]).join(',')}<br><span style="font-size:10pt">${i+1}</span></td>`;
+    if(t) h+=`<td align="center" style="background:${t.color};padding:8px;font-weight:bold;border:1px solid #ccc">${(t.members||[]).join(', ')}<br><span style="font-size:10pt;color:#555">${t.name||''}</span></td>`;
     else h+=`<td style="border:1px solid #ccc"></td>`;
   }
   h+=`</tr></table>`;
