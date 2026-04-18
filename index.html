@@ -107,16 +107,21 @@ body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFon
 .crp-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .crp-name{font-size:12px;font-weight:700;min-width:44px}
 /* ── Comp Sheet ── */
-.co-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.co-row:last-child{border-bottom:none}
-.co-name{font-size:14px;font-weight:700;min-width:64px}
-.co-types{display:flex;gap:5px;flex:1;flex-wrap:wrap}
-.co-type-btn{border:1.5px solid var(--border);border-radius:16px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-sub);font-family:inherit;transition:all .12s;white-space:nowrap}
+.co-section{padding:10px 0;border-bottom:1px solid var(--border)}
+.co-section:last-child{border-bottom:none}
+.co-sec-name{font-size:13px;font-weight:800;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.co-add-btn{font-size:11px;font-weight:700;color:var(--primary);background:var(--primary-light);border:none;border-radius:10px;padding:2px 10px;cursor:pointer;font-family:inherit}
+.co-add-btn:hover{opacity:.8}
+.co-entries{display:flex;flex-direction:column;gap:6px}
+.co-entry-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.co-type-btn{border:1.5px solid var(--border);border-radius:14px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-sub);font-family:inherit;transition:all .12s;white-space:nowrap}
 .co-type-btn:hover{border-color:var(--primary)}
 .co-type-btn.on.ham{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
 .co-type-btn.on.hpm{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd}
 .co-type-btn.on.excl{background:#fce7f3;color:#9d174d;border-color:#f9a8d4}
-.co-date{border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:var(--text)}
+.co-date{border:1px solid var(--border);border-radius:6px;padding:3px 7px;font-size:12px;font-family:inherit;color:var(--text)}
+.co-del-btn{font-size:11px;font-weight:700;color:#ef4444;background:#fee2e2;border:none;border-radius:10px;padding:3px 8px;cursor:pointer;font-family:inherit;margin-left:auto}
+.co-del-btn:hover{opacity:.8}
 
 /* ── Notifications ── */
 .notif-item{background:var(--surface);border-radius:var(--radius);padding:14px 18px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start}
@@ -1107,90 +1112,132 @@ function getCompForMember(member,periodKey){
   });
 }
 
+let _rowState={};
+let _rowCnt=0;
+const _COMP_TYPES=[
+  {v:'half_am',l:'오전반차',cls:'ham'},
+  {v:'half_pm',l:'오후반차',cls:'hpm'},
+  {v:'excl',l:'영업제외',cls:'excl'},
+];
+
+function _compRowHTML(rk,type,date,isSaved){
+  const btns=_COMP_TYPES.map(t=>`<button class="co-type-btn ${type===t.v?'on '+t.cls:''}" onclick="rowSetType('${rk}','${t.v}')">${t.l}</button>`).join('');
+  const del=isSaved
+    ?`<button class="co-del-btn" onclick="deleteCompEntry('${rk}')">✕ 삭제</button>`
+    :`<button class="co-del-btn" onclick="removeNewRow('${rk}')">✕</button>`;
+  return `<div class="co-entry-row" id="coer-${rk}">${btns}<input type="date" class="co-date" value="${date||''}" onchange="rowSetDate('${rk}',this.value)">${del}</div>`;
+}
+
 function renderCompSheetContent(){
   const p=curPeriod();
   if(!p) return;
+  _rowState={};_rowCnt=0;
   const allMembers=[...new Set(S.teams.filter(t=>t.active).flatMap(t=>t.members||[]))];
   if(!allMembers.length){
     document.getElementById('compSheetContent').innerHTML='<div style="font-size:13px;color:#9ca3af">활성 직원이 없습니다</div>';
     return;
   }
-  const TYPES=[
-    {v:'half_am',l:'오전반차',sub:'14시 출근',cls:'ham'},
-    {v:'half_pm',l:'오후반차',sub:'13:30 퇴근',cls:'hpm'},
-    {v:'excl',l:'영업제외',sub:'차주 미포함',cls:'excl'},
-  ];
   document.getElementById('compSheetContent').innerHTML=allMembers.map(m=>{
-    const existing=getCompForMember(m,p.period_key);
-    const ex=existing[0];
-    const curType=ex?ex.comp_type:'';
-    const curDate=ex?ex.comp_date||'':'';
-    return `<div class="co-row">
-      <div class="co-name">${m}</div>
-      <div class="co-types">
-        ${TYPES.map(t=>`<button class="co-type-btn ${curType===t.v?'on '+t.cls:''}" id="cob-${m}-${t.v}"
-          onclick="toggleCompType('${m}','${t.v}','${p.period_key}')" title="${t.sub}">${t.l}</button>`).join('')}
-      </div>
-      <input type="date" class="co-date" id="cod-${m}" value="${curDate}"
-        onchange="saveCompEntry('${m}','${p.period_key}')">
+    const entries=getCompForMember(m,p.period_key).sort((a,b)=>(a.comp_date||'').localeCompare(b.comp_date||''));
+    const rowsHTML=entries.map(e=>{
+      const rk='s'+e.id;
+      _rowState[rk]={type:e.comp_type,date:e.comp_date||'',id:e.id,member:m,periodKey:p.period_key};
+      return _compRowHTML(rk,e.comp_type,e.comp_date||'',true);
+    }).join('');
+    return `<div class="co-section">
+      <div class="co-sec-name">${m}<button class="co-add-btn" onclick="addCompRow('${m}','${p.period_key}')">+ 추가</button></div>
+      <div class="co-entries" data-member="${m}">${rowsHTML}</div>
     </div>`;
   }).join('');
 }
 
-let _compSelections={};  // { member: type }
-
-async function toggleCompType(member,type,periodKey){
-  // 같은 타입 클릭 시 해제
-  const existing=getCompForMember(member,periodKey);
-  const ex=existing[0];
-  const isSame=ex&&ex.comp_type===type;
-
-  // 버튼 UI 업데이트
-  ['half_am','half_pm','excl'].forEach(t=>{
-    const btn=document.getElementById(`cob-${member}-${t}`);
-    if(!btn) return;
-    btn.className='co-type-btn'+((!isSame&&t===type)?' on '+{half_am:'ham',half_pm:'hpm',excl:'excl'}[t]:'');
-  });
-  _compSelections[member]=isSame?'':type;
-
-  await saveCompEntry(member,periodKey);
+function addCompRow(member,periodKey){
+  const rk='n'+(++_rowCnt);
+  _rowState[rk]={type:'',date:'',id:null,member,periodKey};
+  let container=null;
+  document.querySelectorAll('.co-entries').forEach(el=>{if(el.dataset.member===member)container=el;});
+  if(!container) return;
+  const div=document.createElement('div');
+  div.innerHTML=_compRowHTML(rk,'','',false);
+  container.appendChild(div.firstElementChild);
 }
 
-async function saveCompEntry(member,periodKey){
-  const type=_compSelections[member]||(()=>{
-    const ex=getCompForMember(member,periodKey)[0];
-    return ex?ex.comp_type:'';
-  })();
-  const dateEl=document.getElementById(`cod-${member}`);
-  const date=dateEl?dateEl.value:'';
+function rowSetType(rk,type){
+  const s=_rowState[rk];if(!s) return;
+  s.type=(s.type===type)?'':type;
+  const el=document.getElementById('coer-'+rk);
+  if(el) el.outerHTML=_compRowHTML(rk,s.type,s.date,s.id!==null);
+  if(s.id!==null) _syncSavedRow(rk);
+  else if(s.type&&s.date) _saveNewRow(rk);
+}
 
-  // 기존 manual 레코드 삭제
-  const existing=getCompForMember(member,periodKey);
-  for(const ex of existing){
-    await db.from('compensations').delete().eq('id',ex.id);
-    // 로컬 제거
-    if(ex.comp_date) S.comps[ex.comp_date]=(S.comps[ex.comp_date]||[]).filter(c=>c.id!==ex.id);
-    S.compsByWork[ex.work_date||'manual']=(S.compsByWork[ex.work_date||'manual']||[]).filter(c=>c.id!==ex.id);
-  }
+function rowSetDate(rk,date){
+  const s=_rowState[rk];if(!s) return;
+  s.date=date;
+  if(s.id!==null) _syncSavedRow(rk);
+  else if(s.type&&s.date) _saveNewRow(rk);
+}
 
-  if(type&&date){
-    const payload={
-      work_date:date, comp_date:date, member_name:member,
-      period_key:periodKey, work_type:'manual',
-      comp_type:type, confirmed:true, carried_to:null,
-    };
+function _addLocal(rec){
+  if(rec.comp_date)(S.comps[rec.comp_date]=S.comps[rec.comp_date]||[]).push(rec);
+  const wk=rec.work_date||'manual';
+  (S.compsByWork[wk]=S.compsByWork[wk]||[]).push(rec);
+}
+
+function _removeLocal(id,compDate){
+  if(compDate) S.comps[compDate]=(S.comps[compDate]||[]).filter(c=>c.id!==id);
+  Object.keys(S.compsByWork).forEach(k=>{S.compsByWork[k]=(S.compsByWork[k]||[]).filter(c=>c.id!==id);});
+}
+
+async function _syncSavedRow(rk){
+  const s=_rowState[rk];if(!s||s.id===null) return;
+  const oldId=s.id;
+  await db.from('compensations').delete().eq('id',oldId);
+  _removeLocal(oldId,s.date);
+  if(s.type&&s.date){
+    const payload={work_date:s.date,comp_date:s.date,member_name:s.member,period_key:s.periodKey,work_type:'manual',comp_type:s.type,confirmed:true,carried_to:null};
     const {data,error}=await db.from('compensations').insert(payload).select();
     if(error){toast('저장 오류: '+error.message);return;}
-    if(data&&data[0]){
-      const rec=data[0];
-      (S.comps[date]=S.comps[date]||[]).push(rec);
-      (S.compsByWork[date]=S.compsByWork[date]||[]).push(rec);
-    }
-    toast(`${member} 보상 설정됨`);
-  } else if(!type&&!date){
-    toast(`${member} 보상 삭제됨`);
+    if(data&&data[0]){s.id=data[0].id;_addLocal(data[0]);}
+    toast('보상 수정됨');
+  } else {
+    s.id=null;
+    delete _rowState[rk];
+    const el=document.getElementById('coer-'+rk);if(el) el.remove();
+    toast('보상 삭제됨');
   }
-  renderCalendar();
+  renderCompRight();renderCalendar();
+}
+
+async function _saveNewRow(rk){
+  const s=_rowState[rk];if(!s||s.id!==null) return;
+  const payload={work_date:s.date,comp_date:s.date,member_name:s.member,period_key:s.periodKey,work_type:'manual',comp_type:s.type,confirmed:true,carried_to:null};
+  const {data,error}=await db.from('compensations').insert(payload).select();
+  if(error){toast('저장 오류: '+error.message);return;}
+  if(data&&data[0]){
+    s.id=data[0].id;
+    _addLocal(data[0]);
+    toast(`${s.member} 보상 추가됨`);
+    const el=document.getElementById('coer-'+rk);
+    if(el) el.outerHTML=_compRowHTML(rk,s.type,s.date,true);
+  }
+  renderCompRight();renderCalendar();
+}
+
+async function deleteCompEntry(rk){
+  const s=_rowState[rk];if(!s||s.id===null) return;
+  const {error}=await db.from('compensations').delete().eq('id',s.id);
+  if(error){toast('오류: '+error.message);return;}
+  _removeLocal(s.id,s.date);
+  delete _rowState[rk];
+  const el=document.getElementById('coer-'+rk);if(el) el.remove();
+  toast('보상 삭제됨');
+  renderCompRight();renderCalendar();
+}
+
+function removeNewRow(rk){
+  delete _rowState[rk];
+  const el=document.getElementById('coer-'+rk);if(el) el.remove();
 }
 
 function renderCompRight(){
