@@ -96,20 +96,27 @@ body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFon
 .b-warn{background:#fee2e2;color:#991b1b}
 .b-vol{background:#f0fdf4;color:#14532d}
 .b-excl{background:#fce7f3;color:#9d174d}
-/* ── Comp Page ── */
-.comp-pg-wrap{max-width:720px;margin:0 auto;padding:20px 16px}
-.comp-section{background:var(--surface);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
-.comp-section-hdr{font-size:13px;font-weight:800;color:var(--text-sub);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
-.comp-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);flex-wrap:wrap}
-.comp-item:first-of-type{border-top:none}
-.ci-name{font-size:13px;font-weight:800;min-width:64px}
-.ci-work{font-size:11px;color:var(--text-sub);min-width:72px}
-.ci-type{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
-.ci-date-inp{border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface)}
-.ci-apply{background:var(--success);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
-.ci-apply:hover{opacity:.85}
-.ci-done{font-size:11px;font-weight:700;color:var(--success)}
-.ci-empty{text-align:center;padding:24px;color:var(--text-sub);font-size:13px}
+/* ── Comp Right Panel ── */
+.cal-container{display:flex;gap:14px;align-items:flex-start}
+.cal-main{flex:1;min-width:0}
+.crp{width:240px;flex-shrink:0;background:var(--surface);border-radius:12px;padding:14px;box-shadow:var(--shadow);position:sticky;top:calc(var(--header-h) + 12px)}
+.crp-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.crp-empty{font-size:12px;color:var(--text-sub);text-align:center;padding:16px 0}
+.crp-date-group{margin-bottom:10px}
+.crp-date-label{font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:5px}
+.crp-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.crp-name{font-size:12px;font-weight:700;min-width:44px}
+/* ── Comp Sheet ── */
+.co-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.co-row:last-child{border-bottom:none}
+.co-name{font-size:14px;font-weight:700;min-width:64px}
+.co-types{display:flex;gap:5px;flex:1;flex-wrap:wrap}
+.co-type-btn{border:1.5px solid var(--border);border-radius:16px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-sub);font-family:inherit;transition:all .12s;white-space:nowrap}
+.co-type-btn:hover{border-color:var(--primary)}
+.co-type-btn.on.ham{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
+.co-type-btn.on.hpm{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd}
+.co-type-btn.on.excl{background:#fce7f3;color:#9d174d;border-color:#f9a8d4}
+.co-date{border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:var(--text)}
 
 /* ── Notifications ── */
 .notif-item{background:var(--surface);border-radius:var(--radius);padding:14px 18px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start}
@@ -238,23 +245,31 @@ body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFon
     <div class="tnav-wrap">
       <button class="tnav-item on" id="tn-calendar" onclick="goPage('calendar')">📅 캘린더</button>
       <button class="tnav-item" id="tn-notify" onclick="goPage('notify')">🔔 알림<span class="nbadge" id="nbadge" style="display:none">0</span></button>
-      <button class="tnav-item" id="tn-comp" onclick="goPage('comp')">💰 보상현황</button>
       <button class="tnav-item" id="tn-settings" onclick="goPage('settings')">⚙️ 설정</button>
     </div>
     <div class="hdr-spacer"></div>
+    <button class="hdr-action" onclick="openCompSheet()" style="margin-right:6px;background:#a855f7">💊 보상 설정</button>
     <button class="hdr-action" onclick="openDayoffSheet()">📋 월차 관리</button>
   </header>
 
   <!-- Calendar Page -->
   <div id="pg-calendar" class="page on">
-    <div class="legend" id="legend"></div>
-    <div class="cal-wrap">
-      <div class="cal-hdr">
-        <div class="ch sun">일</div><div class="ch">월</div><div class="ch">화</div>
-        <div class="ch">수</div><div class="ch">목</div><div class="ch">금</div>
-        <div class="ch sat">토</div>
+    <div class="cal-container">
+      <div class="cal-main">
+        <div class="legend" id="legend"></div>
+        <div class="cal-wrap">
+          <div class="cal-hdr">
+            <div class="ch sun">일</div><div class="ch">월</div><div class="ch">화</div>
+            <div class="ch">수</div><div class="ch">목</div><div class="ch">금</div>
+            <div class="ch sat">토</div>
+          </div>
+          <div class="cal-body" id="calBody"></div>
+        </div>
       </div>
-      <div class="cal-body" id="calBody"></div>
+      <div class="crp" id="compRightPanel">
+        <div class="crp-title">💊 보상 현황 <button onclick="openCompSheet()" style="font-size:10px;padding:2px 8px;background:var(--primary-light);color:var(--primary);border:none;border-radius:6px;cursor:pointer;font-weight:700">설정</button></div>
+        <div id="compRightList"><div class="crp-empty">보상 내역이 없습니다</div></div>
+      </div>
     </div>
   </div>
 
@@ -262,12 +277,6 @@ body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFon
   <div id="pg-notify" class="page">
     <div class="pg-title">🔔 알림</div>
     <div id="notifList"></div>
-  </div>
-
-  <!-- Comp Page -->
-  <div id="pg-comp" class="page">
-    <div class="pg-title">💰 보상 현황</div>
-    <div class="comp-pg-wrap" id="compPageWrap"></div>
   </div>
 
   <!-- Settings Page -->
@@ -365,6 +374,19 @@ body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,BlinkMacSystemFon
       <button class="btn btn-g" onclick="overlayClose('schedOverlay')">취소</button>
       <button class="btn btn-d btn-sm" id="delBtn" onclick="deleteSchedule()" style="display:none">삭제</button>
       <button class="btn btn-p" onclick="saveSchedule()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comp Sheet -->
+<div class="overlay" id="compOverlay" onclick="overlayClose('compOverlay',event)">
+  <div class="sheet">
+    <span class="sh-handle"></span>
+    <div class="sh-title" id="compSheetTitle">💊 보상 설정</div>
+    <div class="info-box">📌 직원별 보상을 지정하세요. 날짜를 비우면 삭제됩니다.</div>
+    <div id="compSheetContent"></div>
+    <div style="margin-top:14px">
+      <button class="btn btn-g btn-full" onclick="overlayClose('compOverlay')">닫기</button>
     </div>
   </div>
 </div>
@@ -493,7 +515,8 @@ async function loadAll() {
     if(x.comp_date){
       (S.comps[x.comp_date]=S.comps[x.comp_date]||[]).push(x);
     }
-    (S.compsByWork[x.work_date]=S.compsByWork[x.work_date]||[]).push(x);
+    const wk=x.work_date||'manual';
+    (S.compsByWork[wk]=S.compsByWork[wk]||[]).push(x);
   });
   // Index dayoffs
   S.dayoffs = {};
@@ -560,7 +583,6 @@ function goPage(pg) {
   if(pg==='calendar') renderCalendar();
   if(pg==='notify') renderNotifs();
   if(pg==='settings') renderSettings();
-  if(pg==='comp') renderCompPage();
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -683,6 +705,7 @@ function renderCalendar() {
     body.appendChild(weekEl);
   }
   updateBadge();
+  renderCompRight();
 }
 
 function renderLegend(){
@@ -1065,87 +1088,149 @@ function renderNotifs(){
   ).join('');
 }
 
-function renderCompPage(){
-  const period=curPeriod();
-  const wrap=document.getElementById('compPageWrap');
-  if(!wrap) return;
-  if(!period){wrap.innerHTML='<div class="ci-empty">영업 월을 먼저 선택하세요</div>';return;}
-
-  // 현재 기간의 모든 comp 수집 (중복 제거)
-  const compMap={};
-  [...Object.values(S.comps).flat(),...Object.values(S.compsByWork).flat()].forEach(c=>{
-    if(c.id&&c.period_key===period.period_key) compMap[c.id]=c;
-  });
-  const comps=Object.values(compMap).filter(c=>c.work_type!=='volunteer');
-  if(!comps.length){wrap.innerHTML='<div class="ci-empty">이번 기간 보상 내역이 없습니다</div>';return;}
-
-  const typeLabel={half_am:'오전 반일',half_pm:'오후 반일',weekend_dayoff:'보상 월차',excl:'영업제외',carried:'이월'};
-  const typeClass={half_am:'b-ham',half_pm:'b-hpm',weekend_dayoff:'b-dayoff',excl:'b-excl',carried:'b-carried'};
-  const nextWd=ds=>{ const d=parseDt(ds);d.setDate(d.getDate()+1);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return fmtDate(d);};
-
-  // 미확정 / 확정 분리
-  const pending=comps.filter(c=>!c.confirmed).sort((a,b)=>a.work_date.localeCompare(b.work_date));
-  const done=comps.filter(c=>c.confirmed).sort((a,b)=>a.work_date.localeCompare(b.work_date));
-
-  function row(c){
-    const tl=typeLabel[c.comp_type]||c.comp_type;
-    const tc=typeClass[c.comp_type]||'b-carried';
-    const defaultDate=c.comp_date||nextWd(c.work_date);
-    if(!c.confirmed){
-      const dateInput=c.comp_type==='carried'
-        ?`<input type="date" class="ci-date-inp" id="cd-${c.id}" value="${defaultDate}">`
-        :`<input type="date" class="ci-date-inp" id="cd-${c.id}" value="${defaultDate}">`;
-      return `<div class="comp-item">
-        <span class="ci-name">${c.member_name}</span>
-        <span class="ci-work">근무: ${c.work_date}</span>
-        <span class="ci-type badge ${tc}">${tl}</span>
-        ${dateInput}
-        <button class="ci-apply" onclick="applyComp(${c.id})">✅ 적용</button>
-      </div>`;
-    } else {
-      return `<div class="comp-item">
-        <span class="ci-name">${c.member_name}</span>
-        <span class="ci-work">근무: ${c.work_date}</span>
-        <span class="ci-type badge ${tc}">${tl}</span>
-        <span style="font-size:12px;color:var(--text-sub)">${c.comp_date||'-'}</span>
-        <span class="ci-done">✓ 적용완료</span>
-      </div>`;
-    }
-  }
-
-  let html='';
-  if(pending.length){
-    html+=`<div class="comp-section"><div class="comp-section-hdr">⏳ 적용 대기 (${pending.length}건)</div>`;
-    html+=pending.map(row).join('');
-    html+='</div>';
-  }
-  if(done.length){
-    html+=`<div class="comp-section"><div class="comp-section-hdr">✅ 적용 완료 (${done.length}건)</div>`;
-    html+=done.map(row).join('');
-    html+='</div>';
-  }
-  wrap.innerHTML=html;
+// ── 보상 설정 시트 ──
+function openCompSheet(){
+  const p=curPeriod();
+  if(!p){toast('영업 월을 먼저 설정하세요');return;}
+  document.getElementById('compSheetTitle').textContent=`💊 ${p.label||p.period_key} 보상 설정`;
+  renderCompSheetContent();
+  document.getElementById('compOverlay').classList.add('open');
 }
 
-async function applyComp(id){
-  const compMap={};
-  [...Object.values(S.comps).flat(),...Object.values(S.compsByWork).flat()].forEach(c=>{if(c.id)compMap[c.id]=c;});
-  const c=compMap[id];
-  if(!c) return;
-  const dateEl=document.getElementById('cd-'+id);
-  const compDate=dateEl?dateEl.value:c.comp_date;
-  if(!compDate&&c.comp_type!=='excl'){toast('보상 날짜를 선택하세요');return;}
-  const {error}=await db.from('compensations').update({confirmed:true,comp_date:compDate||null}).eq('id',id);
-  if(error){toast('오류: '+error.message);return;}
-  // 로컬 업데이트
-  c.confirmed=true;c.comp_date=compDate||null;
-  // realtime이 처리하지만 즉시 반영
-  if(compDate){
-    (S.comps[compDate]=S.comps[compDate]||[]).push(c);
+function getCompForMember(member,periodKey){
+  const all=[...Object.values(S.comps).flat(),...Object.values(S.compsByWork).flat()];
+  const seen=new Set();
+  return all.filter(c=>{
+    if(seen.has(c.id)) return false;
+    seen.add(c.id);
+    return c.member_name===member && c.period_key===periodKey && c.work_type==='manual';
+  });
+}
+
+function renderCompSheetContent(){
+  const p=curPeriod();
+  if(!p) return;
+  const allMembers=[...new Set(S.teams.filter(t=>t.active).flatMap(t=>t.members||[]))];
+  if(!allMembers.length){
+    document.getElementById('compSheetContent').innerHTML='<div style="font-size:13px;color:#9ca3af">활성 직원이 없습니다</div>';
+    return;
   }
-  toast('✅ 보상 적용 완료');
-  renderCompPage();
+  const TYPES=[
+    {v:'half_am',l:'오전반차',sub:'14시 출근',cls:'ham'},
+    {v:'half_pm',l:'오후반차',sub:'13:30 퇴근',cls:'hpm'},
+    {v:'excl',l:'영업제외',sub:'차주 미포함',cls:'excl'},
+  ];
+  document.getElementById('compSheetContent').innerHTML=allMembers.map(m=>{
+    const existing=getCompForMember(m,p.period_key);
+    const ex=existing[0];
+    const curType=ex?ex.comp_type:'';
+    const curDate=ex?ex.comp_date||'':'';
+    return `<div class="co-row">
+      <div class="co-name">${m}</div>
+      <div class="co-types">
+        ${TYPES.map(t=>`<button class="co-type-btn ${curType===t.v?'on '+t.cls:''}" id="cob-${m}-${t.v}"
+          onclick="toggleCompType('${m}','${t.v}','${p.period_key}')" title="${t.sub}">${t.l}</button>`).join('')}
+      </div>
+      <input type="date" class="co-date" id="cod-${m}" value="${curDate}"
+        onchange="saveCompEntry('${m}','${p.period_key}')">
+    </div>`;
+  }).join('');
+}
+
+let _compSelections={};  // { member: type }
+
+async function toggleCompType(member,type,periodKey){
+  // 같은 타입 클릭 시 해제
+  const existing=getCompForMember(member,periodKey);
+  const ex=existing[0];
+  const isSame=ex&&ex.comp_type===type;
+
+  // 버튼 UI 업데이트
+  ['half_am','half_pm','excl'].forEach(t=>{
+    const btn=document.getElementById(`cob-${member}-${t}`);
+    if(!btn) return;
+    btn.className='co-type-btn'+((!isSame&&t===type)?' on '+{half_am:'ham',half_pm:'hpm',excl:'excl'}[t]:'');
+  });
+  _compSelections[member]=isSame?'':type;
+
+  await saveCompEntry(member,periodKey);
+}
+
+async function saveCompEntry(member,periodKey){
+  const type=_compSelections[member]||(()=>{
+    const ex=getCompForMember(member,periodKey)[0];
+    return ex?ex.comp_type:'';
+  })();
+  const dateEl=document.getElementById(`cod-${member}`);
+  const date=dateEl?dateEl.value:'';
+
+  // 기존 manual 레코드 삭제
+  const existing=getCompForMember(member,periodKey);
+  for(const ex of existing){
+    await db.from('compensations').delete().eq('id',ex.id);
+    // 로컬 제거
+    if(ex.comp_date) S.comps[ex.comp_date]=(S.comps[ex.comp_date]||[]).filter(c=>c.id!==ex.id);
+    S.compsByWork[ex.work_date||'manual']=(S.compsByWork[ex.work_date||'manual']||[]).filter(c=>c.id!==ex.id);
+  }
+
+  if(type&&date){
+    const payload={
+      work_date:date, comp_date:date, member_name:member,
+      period_key:periodKey, work_type:'manual',
+      comp_type:type, confirmed:true, carried_to:null,
+    };
+    const {data,error}=await db.from('compensations').insert(payload).select();
+    if(error){toast('저장 오류: '+error.message);return;}
+    if(data&&data[0]){
+      const rec=data[0];
+      (S.comps[date]=S.comps[date]||[]).push(rec);
+      (S.compsByWork[date]=S.compsByWork[date]||[]).push(rec);
+    }
+    toast(`${member} 보상 설정됨`);
+  } else if(!type&&!date){
+    toast(`${member} 보상 삭제됨`);
+  }
   renderCalendar();
+}
+
+function renderCompRight(){
+  const p=curPeriod();
+  const el=document.getElementById('compRightList');
+  if(!el) return;
+  if(!p){el.innerHTML='<div class="crp-empty">영업 월 없음</div>';return;}
+
+  // 이번 기간 manual comp 수집
+  const all=[...Object.values(S.comps).flat(),...Object.values(S.compsByWork).flat()];
+  const seen=new Set();
+  const comps=all.filter(c=>{
+    if(seen.has(c.id)) return false;
+    seen.add(c.id);
+    return c.period_key===p.period_key && c.work_type==='manual' && c.comp_date;
+  }).sort((a,b)=>a.comp_date.localeCompare(b.comp_date));
+
+  if(!comps.length){el.innerHTML='<div class="crp-empty">보상 내역이 없습니다</div>';return;}
+
+  const typeLabel={half_am:'오전반차',half_pm:'오후반차',excl:'영업제외'};
+  const typeClass={half_am:'b-ham',half_pm:'b-hpm',excl:'b-excl'};
+  const W=['일','월','화','수','목','금','토'];
+
+  // 날짜별 그룹
+  const groups={};
+  comps.forEach(c=>{
+    (groups[c.comp_date]=groups[c.comp_date]||[]).push(c);
+  });
+
+  el.innerHTML=Object.entries(groups).map(([date,list])=>{
+    const dt=parseDt(date);
+    const dLabel=`${dt.getMonth()+1}/${dt.getDate()}(${W[dt.getDay()]})`;
+    const rows=list.map(c=>`<div class="crp-row">
+      <span class="crp-name">${c.member_name}</span>
+      <span class="badge ${typeClass[c.comp_type]||'b-carried'}">${typeLabel[c.comp_type]||c.comp_type}</span>
+    </div>`).join('');
+    return `<div class="crp-date-group">
+      <div class="crp-date-label">${dLabel}</div>${rows}
+    </div>`;
+  }).join('');
 }
 
 async function markRead(id){
@@ -1180,23 +1265,7 @@ async function autoCheckNotifs(){
     }
   }
 
-  const threeDaysAgo=new Date(); threeDaysAgo.setDate(threeDaysAgo.getDate()-3);
-  Object.entries(S.compsByWork).forEach(([wd,cs])=>{
-    if(parseDt(wd)<=threeDaysAgo){
-      cs.forEach(async c=>{
-        if(!c.confirmed){
-          const exists=S.notifs.some(n=>n.notif_type==='compensation_pending'&&n.message.includes(c.member_name)&&n.message.includes(wd));
-          if(!exists){
-            await db.from('notifications').insert({
-              notif_type:'compensation_pending',
-              message:`${c.member_name}의 ${wd} 주말 보상이 미확정 상태입니다.`,
-              target_date:wd,is_read:false,
-            });
-          }
-        }
-      });
-    }
-  });
+  // 보상 관련 알림 미사용
 
   // Fix 8: 영업 시작 3일 전 배정 미완료 경고
   for(const p of S.periods){
