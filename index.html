@@ -822,6 +822,8 @@ function renderCompPerMember(mems){
   const isBoth=selectedType==='weekend_both';
   const compTypes=isBoth?[
     {v:'weekend_dayoff',l:'보상 월차',d:'전일 휴무'},
+    {v:'half_am',l:'오전 반일',d:'~13:30'},
+    {v:'half_pm',l:'오후 반일',d:'14:00~'},
     {v:'carried',l:'다음달 이월',d:'미확정'},
   ]:[
     {v:'half_am',l:'오전 반일',d:'~13:30'},
@@ -874,7 +876,7 @@ async function saveSchedule(){
   const teamId=isVolOnly?null:(parseInt(document.getElementById('teamSel').value)||null);
   const type=isVolOnly?'volunteer':selectedType;
 
-  if(!isVolOnly&&!teamId){ await deleteSchedule(); return; }
+  if(!isVolOnly&&!teamId&&type!=='volunteer'){ await deleteSchedule(); return; }
 
   // 중복 배정 방지 (평일만)
   const period=curPeriod();
